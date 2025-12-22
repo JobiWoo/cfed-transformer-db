@@ -5,7 +5,10 @@ const DATA_URL = "./data/transformers.json";
    ========================= */
 function safeStr(v) {
   if (v === null || v === undefined) return "";
-  return String(v).trim();
+  return String(v);
+}
+function trimStr(v) {
+  return safeStr(v).trim();
 }
 function toNumberOrNaN(v) {
   if (v === null || v === undefined || v === "") return NaN;
@@ -14,27 +17,21 @@ function toNumberOrNaN(v) {
 }
 function fmtFixed(v, decimals) {
   const n = toNumberOrNaN(v);
-  if (Number.isNaN(n)) return safeStr(v);
+  if (Number.isNaN(n)) return trimStr(v);
   return n.toFixed(decimals);
 }
 function fmtEpochMs(v) {
-  // Your JSON uses ms since epoch for many date fields.
-  // If value looks like a number large enough, convert. Otherwise return as-is.
   if (v === null || v === undefined || v === "") return "";
   const n = toNumberOrNaN(v);
-  if (Number.isNaN(n)) return safeStr(v);
-  // heuristic: anything after ~1990 in ms is > 631152000000
+  if (Number.isNaN(n)) return trimStr(v);
   if (n > 300000000000) {
     const d = new Date(n);
-    if (!Number.isNaN(d.getTime())) {
-      return d.toLocaleDateString();
-    }
+    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString();
   }
-  return safeStr(v);
+  return trimStr(v);
 }
-
 function computeFeeder(row) {
-  return safeStr(row.FEEDER) || safeStr(row.Feeder) || "";
+  return trimStr(row.FEEDER) || trimStr(row.Feeder) || "";
 }
 
 /* =========================
@@ -57,12 +54,12 @@ let allRows = [];
 let currentRecord = null;
 
 /* =========================
-   Small UI helpers
+   UI helpers
    ========================= */
 function setValue(elId, value, isMultiline=false) {
   const el = document.getElementById(elId);
   if (!el) return;
-  const v = safeStr(value);
+  const v = trimStr(value);
   el.textContent = v ? v : "—";
   if (v) el.classList.remove("blank");
   else el.classList.add("blank");
@@ -148,64 +145,92 @@ function activateTab(tabId) {
 }
 
 /* =========================
-   Search logic
+   Robust serial normalization
    ========================= */
-function normalizeSerialInput(raw) {
-  let s = safeStr(raw);
+
+/**
+ * Normalize a serial string for matching:
+ * - trim spaces
+ * - remove internal spaces and common separators
+ * - uppercase for case-insensitive matching
+ */
+function normalizeSerialForMatch(v) {
+  let s = trimStr(v);
+  s = s.replace(/\s+/g, "");        // remove all whitespace
+  s = s.replace(/[-_]/g, "");       // remove separators
+  s = s.toUpperCase();
+  return s;
+}
+
+/**
+ * Normalize user input:
+ * - CP prefix warning + remove CP
+ * - normalize for matching
+ */
+function normalizeUserSerial(raw) {
+  let s = trimStr(raw);
 
   if (s.slice(0, 2).toUpperCase() === "CP") {
     alert("Do Not Use the CP Prefix When Searching for Cooper Transformers.\n\nCP will be removed automatically.");
     s = s.slice(2);
   }
-  s = s.replace(/\s+/g, "").replace(/[-_]/g, "");
-  return s;
+
+  return normalizeSerialForMatch(s);
 }
 
+/* =========================
+   Search
+   ========================= */
 function findBySerial(serialKey) {
-  const key = safeStr(serialKey);
+  const key = normalizeSerialForMatch(serialKey);
   if (!key) return null;
 
-  let rec = allRows.find(r => safeStr(r.SERIAL).replace(/\s+/g, "") === key);
+  // 1) Case-insensitive exact match after normalization
+  let rec = allRows.find(r => normalizeSerialForMatch(r.SERIAL) === key);
   if (rec) return rec;
 
+  // 2) Numeric equivalence (handles leading zeros in input)
   const keyNum = String(Number(key));
   if (keyNum !== "NaN") {
-    rec = allRows.find(r => String(Number(safeStr(r.SERIAL))) === keyNum);
+    rec = allRows.find(r => {
+      const n = String(Number(normalizeSerialForMatch(r.SERIAL)));
+      return n === keyNum;
+    });
     if (rec) return rec;
   }
+
   return null;
 }
 
 function populateFromRecord(r) {
-  // Shared
-  const type = safeStr(r.TYPE);
-  const kva  = safeStr(r.KVA);
-  const pri  = safeStr(r.PRI_VOLT);
-  const sec  = safeStr(r.SEC_VOLT);
+  const type = trimStr(r.TYPE);
+  const kva  = trimStr(r.KVA);
+  const pri  = trimStr(r.PRI_VOLT);
+  const sec  = trimStr(r.SEC_VOLT);
   const today = fmtEpochMs(r.TODAY);
-  const user = safeStr(r.USERNAME);
+  const user = trimStr(r.USERNAME);
 
   // Status & location
   setValue("s-type", type);
   setValue("s-kva", kva);
   setValue("s-pri", pri);
   setValue("s-sec", sec);
-  setValue("s-status", safeStr(r.STATUS));
-  setValue("s-location", safeStr(r.LOCATION));
-  setValue("s-hse", safeStr(r.HSE_NUM));
-  setValue("s-street", safeStr(r.STREET));
-  setValue("s-install", safeStr(r.INSTALLATION));
-  setValue("s-pole", safeStr(r.POLE_NO));
+  setValue("s-status", trimStr(r.STATUS));
+  setValue("s-location", trimStr(r.LOCATION));
+  setValue("s-hse", trimStr(r.HSE_NUM));
+  setValue("s-street", trimStr(r.STREET));
+  setValue("s-install", trimStr(r.INSTALLATION));
+  setValue("s-pole", trimStr(r.POLE_NO));
   setValue("s-feeder", computeFeeder(r));
-  setValue("s-phase", safeStr(r.PHASE));
-  setValue("s-block", safeStr(r.FEEDER_BLOCK));
-  setValue("s-secdist", safeStr(r.SEC_DIST));
-  setValue("s-nocust", safeStr(r.NO_CUST));
-  setValue("s-banked", safeStr(r["Banked Installation"]) || safeStr(r.Banked) || safeStr(r.BANKED));
-  setValue("s-custowned", safeStr(r.CUST_OWNED));
+  setValue("s-phase", trimStr(r.PHASE));
+  setValue("s-block", trimStr(r.FEEDER_BLOCK));
+  setValue("s-secdist", trimStr(r.SEC_DIST));
+  setValue("s-nocust", trimStr(r.NO_CUST));
+  setValue("s-banked", trimStr(r["Banked Installation"]) || trimStr(r.Banked) || trimStr(r.BANKED));
+  setValue("s-custowned", trimStr(r.CUST_OWNED));
   setValue("s-date-installed", fmtEpochMs(r.DATE_INSTALLED));
   setValue("s-date-recovered", fmtEpochMs(r.DATE_RECOVERED));
-  setValue("s-remarks", safeStr(r.REMARKS), true);
+  setValue("s-remarks", trimStr(r.REMARKS), true);
   setValue("s-today", today);
   setValue("s-user", user);
 
@@ -214,10 +239,10 @@ function populateFromRecord(r) {
   setValue("n-kva", kva);
   setValue("n-pri", pri);
   setValue("n-sec", sec);
-  setValue("n-mfg", safeStr(r.MFG));
-  setValue("n-serial", safeStr(r.SERIAL));
+  setValue("n-mfg", trimStr(r.MFG));
+  setValue("n-serial", trimStr(r.SERIAL));
   setValue("n-imp", fmtFixed(r.IMP, 2));
-  setValue("n-year", safeStr(r.YEAR_MFG));
+  setValue("n-year", trimStr(r.YEAR_MFG));
   setValue("n-today", today);
   setValue("n-user", user);
 
@@ -227,14 +252,14 @@ function populateFromRecord(r) {
   setValue("t-pri", pri);
   setValue("t-sec", sec);
   setValue("t-date-tested", fmtEpochMs(r.DATE_TESTED));
-  setValue("t-pcb-sign", safeStr(r.PCB_SIGN));
-  setValue("t-pcb-amt", safeStr(r.PCB_AMNT));
-  setValue("t-weight", safeStr(r.WEIGHT));
-  setValue("t-gallons", safeStr(r.GALLONS));
-  setValue("t-megger", safeStr(r.MEGGER_RESULTS));
-  setValue("t-ttr", safeStr(r.TTR_RESULTS), true);
-  setValue("t-polarity", safeStr(r.POLARITY));
-  setValue("t-test-remarks", safeStr(r.TEST_REMARKS), true);
+  setValue("t-pcb-sign", trimStr(r.PCB_SIGN));
+  setValue("t-pcb-amt", trimStr(r.PCB_AMNT));
+  setValue("t-weight", trimStr(r.WEIGHT));
+  setValue("t-gallons", trimStr(r.GALLONS));
+  setValue("t-megger", trimStr(r.MEGGER_RESULTS));
+  setValue("t-ttr", trimStr(r.TTR_RESULTS), true);
+  setValue("t-polarity", trimStr(r.POLARITY));
+  setValue("t-test-remarks", trimStr(r.TEST_REMARKS), true);
   setValue("t-today", today);
   setValue("t-user", user);
 
@@ -243,11 +268,11 @@ function populateFromRecord(r) {
   setValue("i-kva", kva);
   setValue("i-pri", pri);
   setValue("i-sec", sec);
-  setValue("i-price", safeStr(r.PRICE));
+  setValue("i-price", trimStr(r.PRICE));
   setValue("i-date-inventoried", fmtEpochMs(r.DATE_INVENTORIED));
   setValue("i-date-delivered", fmtEpochMs(r.DATE_DELIVERED));
   setValue("i-date-scrapped", fmtEpochMs(r.DATE_SCRAPPED));
-  setValue("i-scrap-remarks", safeStr(r.SCRAP_REMARKS), true);
+  setValue("i-scrap-remarks", trimStr(r.SCRAP_REMARKS), true);
   setValue("i-today", today);
   setValue("i-user", user);
 
@@ -258,7 +283,7 @@ function runSearch() {
   resetAllFields();
 
   const raw = serialInput.value;
-  const key = normalizeSerialInput(raw);
+  const key = normalizeUserSerial(raw);
 
   if (!key) {
     alert("Enter a Serial Number to search.");
@@ -276,30 +301,29 @@ function runSearch() {
 
   currentRecord = rec;
   populateFromRecord(rec);
-  elStatus.textContent = `Found Serial ${safeStr(rec.SERIAL)} • Trans_ID ${safeStr(rec.TRANS_ID)}`;
 
-  // After a successful search, default to Status & Location tab like Access
+  elStatus.textContent = `Found Serial ${trimStr(rec.SERIAL)} • Trans_ID ${trimStr(rec.TRANS_ID)}`;
   activateTab("tab-status");
 }
 
 /* =========================
-   Preview Record
+   Preview
    ========================= */
 function buildPreviewHtml(r) {
   const now = new Date().toLocaleString();
   const rows = [
-    ["Serial", safeStr(r.SERIAL)],
-    ["Manufacturer", safeStr(r.MFG)],
-    ["Type", safeStr(r.TYPE)],
-    ["KVA", safeStr(r.KVA)],
-    ["Primary", safeStr(r.PRI_VOLT)],
-    ["Secondary", safeStr(r.SEC_VOLT)],
+    ["Serial", trimStr(r.SERIAL)],
+    ["Manufacturer", trimStr(r.MFG)],
+    ["Type", trimStr(r.TYPE)],
+    ["KVA", trimStr(r.KVA)],
+    ["Primary", trimStr(r.PRI_VOLT)],
+    ["Secondary", trimStr(r.SEC_VOLT)],
     ["Imp", fmtFixed(r.IMP, 2)],
-    ["Status", safeStr(r.STATUS)],
-    ["Location", safeStr(r.LOCATION)],
-    ["Pole No", safeStr(r.POLE_NO)],
+    ["Status", trimStr(r.STATUS)],
+    ["Location", trimStr(r.LOCATION)],
+    ["Pole No", trimStr(r.POLE_NO)],
     ["Feeder", computeFeeder(r)],
-    ["Remarks", safeStr(r.REMARKS)]
+    ["Remarks", trimStr(r.REMARKS)]
   ];
 
   const body = rows.map(([k,v]) => `
@@ -330,7 +354,7 @@ function buildPreviewHtml(r) {
   <h1>Transformer Record</h1>
   <div class="meta">Generated: ${now}</div>
   <div class="wrap">
-    <div class="hdr">Serial: ${safeStr(r.SERIAL)} • Trans_ID: ${safeStr(r.TRANS_ID)}</div>
+    <div class="hdr">Serial: ${trimStr(r.SERIAL)} • Trans_ID: ${trimStr(r.TRANS_ID)}</div>
     <table><tbody>${body}</tbody></table>
   </div>
 </body>
@@ -357,14 +381,14 @@ function showHelp() {
   alert(
 `Search By Serial Number
 
-• Enter a serial number and click Search (or press Enter)
-• Tabs display different sections of the transformer record:
-  - Status & Location
-  - Nameplate Information
-  - Test Results
-  - Inventory Information
+This search is tolerant of:
+• Upper/lowercase differences (m17g16021 = M17G16021)
+• Hidden trailing spaces
+• Extra spaces or separators in the middle (m 17 g 16021)
+• CP prefix (warns + removes CP)
 
-This version is read-only. Later we will allow edits + Save to SQL Server (with permissions).`
+Tabs show different sections of the transformer record.
+Read-only for now; later will save to SQL Server.`
   );
 }
 
@@ -378,7 +402,6 @@ async function init() {
     serialInput.focus();
     elStatus.textContent = `Loaded ${allRows.length} transformers • Ready to search.`;
 
-    // tab clicks
     tabButtons.forEach(btn => {
       btn.addEventListener("click", () => activateTab(btn.dataset.tab));
     });
