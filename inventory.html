@@ -3,86 +3,178 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Transformer Inventory Main Menu</title>
+  <title>Transformer Inventory Listing</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="menu-body">
+<body>
 
-  <div class="menu-shell">
-    <div class="menu-card">
-      <div class="menu-top">
-        <div class="menu-top-title">Transformer Inventory</div>
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="site-topbar">
+      <div class="brand">
+        <div class="brand-title">City of Cuyahoga Falls</div>
+        <div class="brand-subtitle">Electric Department • Transformer Inventory</div>
       </div>
 
-      <div class="menu-banner">
-        <div class="menu-banner-title">Transformer Inventory Main Menu</div>
-        <div class="menu-banner-sub">Good Morning Joe!</div>
+      <div class="top-actions">
+        <a class="link-btn" href="./index.html">Main Menu</a>
+        <a class="link-btn" href="./pole.html">Pole Search</a>
+        <button id="btn-help" class="link-btn" type="button">Help</button>
+      </div>
+    </div>
+
+    <div class="app-header">
+      <div class="app-title-row">
+        <h1 class="app-title">Transformer Inventory Listing</h1>
+        <div class="app-badge">Inventory Statuses Only • Read-Only Demo</div>
       </div>
 
-      <div class="menu-content">
-        <div class="menu-list">
+      <div class="filters">
+        <div class="filter-row">
+          <label class="filter-label">Transformer Type &amp; KVA</label>
 
-          <a class="menu-item" href="./serial.html" aria-disabled="true" title="Coming soon">
-            <span class="menu-icon">🔍</span>
-            <span class="menu-text">Locate Transformers by Serial Number</span>
-            <span class="menu-tag">Coming soon</span>
-          </a>
+          <select id="filter-type" class="select">
+            <option value="">All Types</option>
+          </select>
 
-          <a class="menu-item" href="./pole.html">
-            <span class="menu-icon">🔎</span>
-            <span class="menu-text">Locate Transformers by Pole Number</span>
-          </a>
+          <select id="filter-kva" class="select">
+            <option value="">All KVA</option>
+          </select>
 
-          <a class="menu-item" href="./address.html" aria-disabled="true" title="Coming soon">
-            <span class="menu-icon">📍</span>
-            <span class="menu-text">Locate Transformers by Address Range</span>
-            <span class="menu-tag">Coming soon</span>
-          </a>
-
-          <a class="menu-item" href="./inventory.html">
-            <span class="menu-icon">📦</span>
-            <span class="menu-text">Locate Transformers in Stock (Inventory)</span>
-          </a>
-
-          <a class="menu-item" href="./service.html" aria-disabled="true" title="Coming soon">
-            <span class="menu-icon">⚡</span>
-            <span class="menu-text">Locate Transformers in Service</span>
-            <span class="menu-tag">Coming soon</span>
-          </a>
-
-          <div class="menu-divider"></div>
-
-          <a class="menu-item" href="./reports.html" aria-disabled="true" title="Coming soon">
-            <span class="menu-icon">🖨️</span>
-            <span class="menu-text">Report Menu</span>
-            <span class="menu-tag">Coming soon</span>
-          </a>
-
-          <a class="menu-item" href="./utility.html" aria-disabled="true" title="Coming soon">
-            <span class="menu-icon">🛠️</span>
-            <span class="menu-text">Utility Menu</span>
-            <span class="menu-tag">Coming soon</span>
-          </a>
-
+          <div></div>
+          <div></div>
         </div>
 
-        <div class="menu-actions">
-          <button class="menu-action-btn" type="button" disabled>
-            Update Public DB
-          </button>
-          <button class="menu-action-btn" type="button" disabled>
-            Update ArcGIS
+        <div class="filter-row">
+          <label class="filter-label">Primary / Secondary</label>
+
+          <select id="filter-pri" class="select">
+            <option value="">All Primary</option>
+          </select>
+
+          <select id="filter-sec" class="select">
+            <option value="">All Secondary</option>
+          </select>
+
+          <div></div>
+          <button id="btn-apply" class="btn btn-primary" type="button">
+            Search
           </button>
         </div>
       </div>
+    </div>
+  </header>
 
-      <div class="menu-footer">
-        <a class="menu-footer-link" href="./inventory.html">Inventory</a>
-        <span class="menu-footer-sep">|</span>
-        <a class="menu-footer-link" href="./pole.html">Pole Search</a>
+  <!-- MAIN CONTENT -->
+  <main class="layout">
+    <section class="grid-panel">
+      <div class="grid-toolbar">
+        <input
+          id="search"
+          class="search"
+          type="search"
+          placeholder="Search in inventory…"
+        />
+        <div id="status" class="status">Loading…</div>
+      </div>
+
+      <div class="grid-wrap">
+        <table class="grid" id="grid">
+          <thead>
+            <tr>
+              <th>Manufacturer</th>
+              <th>Serial</th>
+              <th>Imp</th>
+              <th>Status</th>
+              <th>Location</th>
+            </tr>
+          </thead>
+          <tbody id="grid-body"></tbody>
+        </table>
+      </div>
+
+      <div class="hint">
+        Default view includes only inventory statuses:
+        <strong>
+          IN STOCK, NEW T.B.T., RECOVERED T.B.T., NEEDS TESTED, ON HOLD, NEEDS PAINTED
+        </strong>.
+        Click a row to select a transformer.
+      </div>
+    </section>
+
+    <!-- RIGHT BUTTON BAR -->
+    <aside class="button-bar">
+      <button
+        id="btn-viewedit"
+        class="btn btn-icon"
+        disabled
+        type="button"
+      >
+        <span class="icon">✎</span>
+        <span>View/Edit</span>
+      </button>
+
+      <button
+        id="btn-preview"
+        class="btn btn-icon"
+        disabled
+        type="button"
+      >
+        <span class="icon">🔍</span>
+        <span>Preview</span>
+      </button>
+
+      <button
+        id="btn-print"
+        class="btn btn-icon"
+        disabled
+        type="button"
+      >
+        <span class="icon">🖨️</span>
+        <span>Print</span>
+      </button>
+
+      <button
+        id="btn-quit"
+        class="btn btn-icon"
+        type="button"
+      >
+        <span class="icon">⏻</span>
+        <span>Quit</span>
+      </button>
+    </aside>
+  </main>
+
+  <!-- VIEW / EDIT MODAL -->
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">View / Edit Transformer</div>
+          <div id="modal-subtitle" class="modal-subtitle"></div>
+        </div>
+        <button
+          id="modal-close"
+          class="btn btn-small"
+          type="button"
+        >
+          Close
+        </button>
+      </div>
+
+      <div id="modal-body" class="modal-body"></div>
+
+      <div class="modal-footer">
+        <div class="note">
+          GitHub Pages demo is read-only.
+          Future versions will connect directly to SQL Server.
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- SCRIPT -->
+  <script src="app.js"></script>
 </body>
 </html>
+
