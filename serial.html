@@ -26,14 +26,14 @@
     <div class="app-header">
       <div class="app-title-row">
         <h1 class="app-title">Search By Serial Number</h1>
-        <div class="app-badge">Form View • Read-Only Demo</div>
+        <div class="app-badge">Tabbed Record View • Read-Only Demo</div>
       </div>
 
       <div class="filters">
         <div class="filter-row">
-          <label class="filter-label">Enter Serial Number</label>
+          <label class="filter-label">Enter Serial Number For Search</label>
 
-          <input id="serial-input" class="search" type="text" placeholder="e.g. 2246025 (do not include CP prefix)" />
+          <input id="serial-input" class="search" type="text" placeholder="e.g. 2246025 (no CP prefix)" />
 
           <div></div>
           <div></div>
@@ -50,92 +50,319 @@
         <div id="status" class="status">Enter a serial number and click Search.</div>
       </div>
 
-      <!-- FORM CARD -->
-      <div class="serial-form">
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" data-tab="tab-status" type="button">Status &amp; Location</button>
+        <button class="tab" data-tab="tab-nameplate" type="button">Nameplate Information</button>
+        <button class="tab" data-tab="tab-test" type="button">Test Results</button>
+        <button class="tab" data-tab="tab-inventory" type="button">Inventory Information</button>
+      </div>
 
-        <div class="serial-form-row">
-          <div class="serial-field">
-            <div class="serial-label">Trans_ID</div>
-            <div id="f-transid" class="serial-value blank">—</div>
-          </div>
-          <div class="serial-field">
-            <div class="serial-label">Serial</div>
-            <div id="f-serial" class="serial-value blank">—</div>
-          </div>
-          <div class="serial-field">
-            <div class="serial-label">Manufacturer</div>
-            <div id="f-mfg" class="serial-value blank">—</div>
+      <!-- Tab panels -->
+      <div class="tab-panels">
+
+        <!-- STATUS & LOCATION -->
+        <div id="tab-status" class="tab-panel active">
+          <div class="form-grid-2col">
+
+            <div class="form-block">
+              <div class="form-row">
+                <div class="form-label">Transformer Type</div>
+                <div id="s-type" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">KVA / Primary / Secondary</div>
+                <div class="form-value-inline">
+                  <span id="s-kva" class="chip blank">—</span>
+                  <span id="s-pri" class="chip blank">—</span>
+                  <span id="s-sec" class="chip blank">—</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Status</div>
+                <div id="s-status" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Location</div>
+                <div id="s-location" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Address</div>
+                <div class="form-value-inline">
+                  <span id="s-hse" class="chip blank">—</span>
+                  <span id="s-street" class="chip blank">—</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Installation</div>
+                <div id="s-install" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Pole #</div>
+                <div id="s-pole" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Feeder / Phase / Block</div>
+                <div class="form-value-inline">
+                  <span id="s-feeder" class="chip blank">—</span>
+                  <span id="s-phase" class="chip blank">—</span>
+                  <span id="s-block" class="chip blank">—</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Secondary District / No. Customers</div>
+                <div class="form-value-inline">
+                  <span id="s-secdist" class="chip blank">—</span>
+                  <span id="s-nocust" class="chip blank">—</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Banked Installation</div>
+                <div id="s-banked" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Customer Owned</div>
+                <div id="s-custowned" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Date Installed</div>
+                <div id="s-date-installed" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Date Recovered</div>
+                <div id="s-date-recovered" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Remarks</div>
+                <div id="s-remarks" class="form-value blank multiline">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Date Last Updated / By</div>
+                <div class="form-value-inline">
+                  <span id="s-today" class="chip blank">—</span>
+                  <span id="s-user" class="chip blank">—</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        <div class="serial-form-row">
-          <div class="serial-field">
-            <div class="serial-label">Type</div>
-            <div id="f-type" class="serial-value blank">—</div>
-          </div>
-          <div class="serial-field">
-            <div class="serial-label">KVA</div>
-            <div id="f-kva" class="serial-value blank">—</div>
-          </div>
-          <div class="serial-field">
-            <div class="serial-label">Imp</div>
-            <div id="f-imp" class="serial-value blank">—</div>
+        <!-- NAMEPLATE -->
+        <div id="tab-nameplate" class="tab-panel">
+          <div class="form-grid-2col">
+            <div class="form-block">
+
+              <div class="form-row">
+                <div class="form-label">Transformer Type</div>
+                <div id="n-type" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">KVA / Primary / Secondary</div>
+                <div class="form-value-inline">
+                  <span id="n-kva" class="chip blank">—</span>
+                  <span id="n-pri" class="chip blank">—</span>
+                  <span id="n-sec" class="chip blank">—</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Manufacturer</div>
+                <div id="n-mfg" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Serial Number</div>
+                <div id="n-serial" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Impedance (%)</div>
+                <div id="n-imp" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Year of MFG</div>
+                <div id="n-year" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Date Last Updated / By</div>
+                <div class="form-value-inline">
+                  <span id="n-today" class="chip blank">—</span>
+                  <span id="n-user" class="chip blank">—</span>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
 
-        <div class="serial-form-row">
-          <div class="serial-field">
-            <div class="serial-label">Primary</div>
-            <div id="f-pri" class="serial-value blank">—</div>
-          </div>
-          <div class="serial-field">
-            <div class="serial-label">Secondary</div>
-            <div id="f-sec" class="serial-value blank">—</div>
-          </div>
-          <div class="serial-field">
-            <div class="serial-label">Status</div>
-            <div id="f-status" class="serial-value blank">—</div>
+        <!-- TEST RESULTS -->
+        <div id="tab-test" class="tab-panel">
+          <div class="form-grid-2col">
+            <div class="form-block">
+
+              <div class="form-row">
+                <div class="form-label">Transformer Type</div>
+                <div id="t-type" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">KVA / Primary / Secondary</div>
+                <div class="form-value-inline">
+                  <span id="t-kva" class="chip blank">—</span>
+                  <span id="t-pri" class="chip blank">—</span>
+                  <span id="t-sec" class="chip blank">—</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Date of Test</div>
+                <div id="t-date-tested" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">PCB Results</div>
+                <div class="form-value-inline">
+                  <span id="t-pcb-sign" class="chip blank">—</span>
+                  <span id="t-pcb-amt" class="chip blank">—</span>
+                  <span class="chip">PPM</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Weight / Gallons of Oil</div>
+                <div class="form-value-inline">
+                  <span id="t-weight" class="chip blank">—</span>
+                  <span id="t-gallons" class="chip blank">—</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Megger Results</div>
+                <div id="t-megger" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">TTR Results</div>
+                <div id="t-ttr" class="form-value blank multiline">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Polarity</div>
+                <div id="t-polarity" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Test Remarks</div>
+                <div id="t-test-remarks" class="form-value blank multiline">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Date Last Updated / By</div>
+                <div class="form-value-inline">
+                  <span id="t-today" class="chip blank">—</span>
+                  <span id="t-user" class="chip blank">—</span>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
 
-        <div class="serial-form-row">
-          <div class="serial-field">
-            <div class="serial-label">Location</div>
-            <div id="f-location" class="serial-value blank">—</div>
-          </div>
-          <div class="serial-field">
-            <div class="serial-label">Pole No</div>
-            <div id="f-pole" class="serial-value blank">—</div>
-          </div>
-          <div class="serial-field">
-            <div class="serial-label">Feeder</div>
-            <div id="f-feeder" class="serial-value blank">—</div>
-          </div>
-        </div>
+        <!-- INVENTORY INFO -->
+        <div id="tab-inventory" class="tab-panel">
+          <div class="form-grid-2col">
+            <div class="form-block">
 
-        <div class="serial-form-row">
-          <div class="serial-field wide">
-            <div class="serial-label">Remarks</div>
-            <div id="f-remarks" class="serial-value blank multiline">—</div>
+              <div class="form-row">
+                <div class="form-label">Transformer Type</div>
+                <div id="i-type" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">KVA / Primary / Secondary</div>
+                <div class="form-value-inline">
+                  <span id="i-kva" class="chip blank">—</span>
+                  <span id="i-pri" class="chip blank">—</span>
+                  <span id="i-sec" class="chip blank">—</span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Price</div>
+                <div id="i-price" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Date Inventoried</div>
+                <div id="i-date-inventoried" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Date Delivered</div>
+                <div id="i-date-delivered" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Date Scrapped</div>
+                <div id="i-date-scrapped" class="form-value blank">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Scrap Remarks</div>
+                <div id="i-scrap-remarks" class="form-value blank multiline">—</div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-label">Date Last Updated / By</div>
+                <div class="form-value-inline">
+                  <span id="i-today" class="chip blank">—</span>
+                  <span id="i-user" class="chip blank">—</span>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
 
       </div>
 
       <div class="hint">
-        This page is read-only for now. Later, fields will become editable and will save back to SQL Server.
+        Read-only demo. Later, these tabs can become editable and save to SQL Server with permissions.
       </div>
     </section>
 
     <aside class="button-bar">
       <button id="btn-preview" class="btn btn-icon" disabled type="button">
         <span class="icon">🔍</span>
-        <span>Preview</span>
+        <span>Preview Record</span>
       </button>
 
-      <button id="btn-quit" class="btn btn-icon" type="button">
+      <button id="btn-new" class="btn btn-icon" type="button">
+        <span class="icon">🆕</span>
+        <span>New Search</span>
+      </button>
+
+      <button id="btn-close" class="btn btn-icon" type="button">
         <span class="icon">⏻</span>
-        <span>Quit</span>
+        <span>Close</span>
       </button>
     </aside>
   </main>
