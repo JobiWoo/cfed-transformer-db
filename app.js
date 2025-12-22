@@ -1,6 +1,50 @@
 const DATA_URL = "./data/transformers.json";
 
-// Inventory statuses that should appear on this page (foreman/linemen view)
+/* =========================
+   CENTRALIZED FIELD RULES
+   ========================= */
+function safeStr(v) {
+  if (v === null || v === undefined) return "";
+  return String(v).trim();
+}
+function toNumberOrNaN(v) {
+  if (v === null || v === undefined || v === "") return NaN;
+  const n = Number(v);
+  return Number.isNaN(n) ? NaN : n;
+}
+function fmtFixed(v, decimals) {
+  const n = toNumberOrNaN(v);
+  if (Number.isNaN(n)) return safeStr(v);
+  return n.toFixed(decimals);
+}
+function normalizeUpper(v) {
+  return safeStr(v).toUpperCase();
+}
+
+// One place for "how fields should be displayed"
+const FIELD_RULES = {
+  MFG:      { label: "Manufacturer", format: (v) => safeStr(v) },
+  SERIAL:   { label: "Serial Number", format: (v) => safeStr(v) },
+  IMP:      { label: "Imp", format: (v) => fmtFixed(v, 2) },
+  LOCATION: { label: "Location", format: (v) => safeStr(v) },
+  STATUS:   { label: "Status", format: (v) => safeStr(v) },
+  REMARKS:  { label: "Remarks", format: (v) => safeStr(v) },
+
+  TRANS_ID: { label: "Trans_ID", format: (v) => safeStr(v) },
+  KVA:      { label: "KVA", format: (v) => safeStr(v) },
+  TYPE:     { label: "Type", format: (v) => safeStr(v) },
+  PRI_VOLT: { label: "Primary", format: (v) => safeStr(v) },
+  SEC_VOLT: { label: "Secondary", format: (v) => safeStr(v) },
+};
+
+function formatField(key, value) {
+  const rule = FIELD_RULES[key];
+  return rule ? rule.format(value) : safeStr(value);
+}
+
+/* =========================
+   INVENTORY PAGE BEHAVIOR
+   ========================= */
 const INVENTORY_STATUSES = [
   "IN STOCK",
   "NEW T.B.T.",
@@ -8,7 +52,7 @@ const INVENTORY_STATUSES = [
   "NEEDS TESTED",
   "ON HOLD",
   "NEEDS PAINTED"
-];
+].map(normalizeUpper);
 
 // State
 let allRows = [];
@@ -18,75 +62,65 @@ let filtersApplied = false;
 
 // Elements
 const elType = document.getElementById("filter-type");
-const elKva = document.getElementById("filter-kva");
-const elPri = document.getElementById("filter-pri");
-const elSec = document.getElementById("filter-sec");
+const elKva  = document.getElementById("filter-kva");
+const elPri  = document.getElementById("filter-pri");
+const elSec  = document.getElementById("filter-sec");
 
-const btnApply = document.getElementById("btn-apply");
+const btnApply    = document.getElementById("btn-apply");
 const btnViewEdit = document.getElementById("btn-viewedit");
-const btnPreview = document.getElementById("btn-preview");
-const btnPrint = document.getElementById("btn-print");
-const btnQuit = document.getElementById("btn-quit");
-const btnHelp = document.getElementById("btn-help");
+const btnPreview  = document.getElementById("btn-preview");
+const btnPrint    = document.getElementById("btn-print");
+const btnQuit     = document.getElementById("btn-quit");
+const btnHelp     = document.getElementById("btn-help");
 
 const elSearch = document.getElementById("search");
 const elStatus = document.getElementById("status");
-const tbody = document.getElementById("grid-body");
+const tbody    = document.getElementById("grid-body");
 
-const modal = document.getElementById("modal");
-const modalClose = document.getElementById("modal-close");
-const modalBody = document.getElementById("modal-body");
-const modalSubtitle = document.getElementById("modal-subtitle");
+const modal        = document.getElementById("modal");
+const modalClose   = document.getElementById("modal-close");
+const modalBody    = document.getElementById("modal-body");
+const modalSubtitle= document.getElementById("modal-subtitle");
 
-// ---------- Helpers ----------
-function safeStr(v) {
-  if (v === null || v === undefined) return "";
-  return String(v).trim();
-}
-
+/* =========================
+   UI HELPERS
+   ========================= */
 function uniqSorted(values) {
-  return Array.from(new Set(values.filter(v => safeStr(v) !== "")))
-    .sort((a, b) => safeStr(a).localeCompare(safeStr(b), undefined, { numeric: true }));
+  return Array.from(new Set(values.map(safeStr).filter(v => v !== "")))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
-
-function normalizeStatus(s) {
-  return safeStr(s).toUpperCase();
-}
-
-function setButtonsState() {
-  btnPreview.disabled = !filtersApplied;
-  btnPrint.disabled = !filtersApplied;
-  btnViewEdit.disabled = !(filtersApplied && selectedRow);
-}
-
-function isInventoryStatus(row) {
-  const s = normalizeStatus(row.STATUS);
-  return INVENTORY_STATUSES.map(normalizeStatus).includes(s);
-}
-
 function populateSelect(selectEl, values, allLabel) {
   const opts = uniqSorted(values);
   selectEl.innerHTML =
     `<option value="">${allLabel}</option>` +
     opts.map(v => `<option value="${v}">${v}</option>`).join("");
 }
+function setButtonsState() {
+  btnPreview.disabled = !filtersApplied;
+  btnPrint.disabled = !filtersApplied;
+  btnViewEdit.disabled = !(filtersApplied && selectedRow);
+}
+function isInventoryRow(row) {
+  const s = normalizeUpper(row.STATUS);
+  return INVENTORY_STATUSES.includes(s);
+}
 
-// ---------- Filtering ----------
+/* =========================
+   FILTERING
+   ========================= */
 function applyFilters() {
   const typeVal = elType.value;
-  const kvaVal = elKva.value;
-  const priVal = elPri.value;
-  const secVal = elSec.value;
+  const kvaVal  = elKva.value;
+  const priVal  = elPri.value;
+  const secVal  = elSec.value;
 
-  // First: enforce inventory-only
-  const inventoryRows = allRows.filter(isInventoryStatus);
+  const inv = allRows.filter(isInventoryRow);
 
-  // Second: apply user filters (Type/KVA/PRI/SEC)
-  filteredRows = inventoryRows.filter(r => {
+  filteredRows = inv.filter(r => {
     if (typeVal && safeStr(r.TYPE) !== typeVal) return false;
-    if (kvaVal && safeStr(r.KVA) !== kvaVal) return false;
-    if (priVal && safeStr(r.PRI_VOLT) !== priVal) return false;
-    if (secVal && safeStr(r.SEC_VOLT) !== secVal) return false;
+    if (kvaVal  && safeStr(r.KVA) !== kvaVal) return false;
+    if (priVal  && safeStr(r.PRI_VOLT) !== priVal) return false;
+    if (secVal  && safeStr(r.SEC_VOLT) !== secVal) return false;
     return true;
   });
 
@@ -109,7 +143,9 @@ function applySearchAndRender() {
   elStatus.textContent = `Inventory records ${rows.length} (of ${allRows.length} total transformers)`;
 }
 
-// ---------- Grid (on-screen list) ----------
+/* =========================
+   GRID
+   ========================= */
 function renderGrid(rows) {
   tbody.innerHTML = "";
 
@@ -122,11 +158,11 @@ function renderGrid(rows) {
   rows.forEach(r => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${safeStr(r.MFG)}</td>
-      <td>${safeStr(r.SERIAL)}</td>
-      <td>${safeStr(r.IMP)}</td>
-      <td>${safeStr(r.STATUS)}</td>
-      <td>${safeStr(r.LOCATION)}</td>
+      <td>${formatField("MFG", r.MFG)}</td>
+      <td>${formatField("SERIAL", r.SERIAL)}</td>
+      <td>${formatField("IMP", r.IMP)}</td>
+      <td>${formatField("STATUS", r.STATUS)}</td>
+      <td>${formatField("LOCATION", r.LOCATION)}</td>
     `;
 
     tr.addEventListener("click", () => {
@@ -140,44 +176,54 @@ function renderGrid(rows) {
   });
 }
 
-// ---------- Modal ----------
+/* =========================
+   MODAL
+   ========================= */
 function openModalForRow(row) {
-  modalSubtitle.textContent = `Trans_ID: ${safeStr(row.TRANS_ID) || "—"} • Status: ${safeStr(row.STATUS) || "—"}`;
+  modalSubtitle.textContent =
+    `Trans_ID: ${formatField("TRANS_ID", row.TRANS_ID) || "—"} • Status: ${formatField("STATUS", row.STATUS) || "—"}`;
 
   modalBody.innerHTML = `
     <div class="kv">
-      ${Object.keys(row).map(k => `
-        <div class="field">
-          <div class="label">${k}</div>
-          <div class="value">${safeStr(row[k]) || "—"}</div>
-        </div>
-      `).join("")}
+      ${Object.keys(row).map(k => {
+        const val = formatField(k, row[k]);
+        return `
+          <div class="field">
+            <div class="label">${FIELD_RULES[k]?.label || k}</div>
+            <div class="value">${val || "—"}</div>
+          </div>
+        `;
+      }).join("")}
     </div>
   `;
 
   modal.classList.remove("hidden");
 }
-
 function closeModal() {
   modal.classList.add("hidden");
 }
 
-// ---------- Report (Preview / Print) ----------
-const REPORT_COLUMNS = [
-  { key: "MFG",     label: "Manufacturer" },
-  { key: "SERIAL",  label: "Serial Number" },
-  { key: "IMP",     label: "Imp" },
-  { key: "LOCATION",label: "Location" },
-  { key: "STATUS",  label: "Status" },
-  { key: "REMARKS", label: "Remarks" }
-];
+/* =========================
+   REPORT (PREVIEW/PRINT)
+   ========================= */
+const REPORT_KEYS = ["MFG", "SERIAL", "IMP", "LOCATION", "STATUS", "REMARKS"];
+
+// Build a human-friendly criteria string from current dropdowns
+function getCriteriaSummary() {
+  const typeVal = elType.value || "Any";
+  const kvaVal  = elKva.value  || "Any";
+  const priVal  = elPri.value  || "Any";
+  const secVal  = elSec.value  || "Any";
+  return `Type=${typeVal}; KVA=${kvaVal}; Primary=${priVal}; Secondary=${secVal}`;
+}
 
 function buildReportHtml(rows, title) {
   const now = new Date().toLocaleString();
+  const criteria = getCriteriaSummary();
 
-  const head = REPORT_COLUMNS.map(c => `<th>${c.label}</th>`).join("");
+  const head = REPORT_KEYS.map(k => `<th>${FIELD_RULES[k]?.label || k}</th>`).join("");
   const body = rows.map(r => {
-    const tds = REPORT_COLUMNS.map(c => `<td>${safeStr(r[c.key])}</td>`).join("");
+    const tds = REPORT_KEYS.map(k => `<td>${formatField(k, r[k])}</td>`).join("");
     return `<tr>${tds}</tr>`;
   }).join("");
 
@@ -190,7 +236,17 @@ function buildReportHtml(rows, title) {
   <style>
     body{ font-family: Cabin, Segoe UI, Arial, sans-serif; margin:18px; color:#111827; }
     h1{ font-size:20px; margin:0 0 6px 0; font-weight:900; }
-    .meta{ font-size:12px; color:#6b7280; margin-bottom:12px; }
+    .meta{ font-size:12px; color:#6b7280; margin-bottom:10px; }
+    .criteria{
+      font-size:13px;
+      font-weight:800;
+      color:#0a2f60;
+      background:#f3f7ff;
+      border:1px solid #d6e4ff;
+      padding:10px 12px;
+      border-radius:12px;
+      margin: 10px 0 14px;
+    }
     table{ width:100%; border-collapse:collapse; }
     th{
       background:#0b3a78; color:#fff; text-align:left;
@@ -201,6 +257,7 @@ function buildReportHtml(rows, title) {
       border-bottom:1px solid #e5e7eb;
       font-size:12px;
       vertical-align:top;
+      white-space:nowrap;
     }
     td:last-child{
       white-space:normal;
@@ -215,7 +272,9 @@ function buildReportHtml(rows, title) {
 </head>
 <body>
   <h1>${title}</h1>
-  <div class="meta">Generated: ${now} • Inventory Records: ${rows.length}</div>
+  <div class="meta">Generated: ${now} • Records: ${rows.length}</div>
+  <div class="criteria">Criteria: ${criteria}</div>
+
   <table>
     <thead><tr>${head}</tr></thead>
     <tbody>${body}</tbody>
@@ -248,44 +307,40 @@ function openReportWindow(doPrint) {
   if (doPrint) setTimeout(() => w.print(), 250);
 }
 
-// ---------- Help ----------
+/* =========================
+   HELP
+   ========================= */
 function showHelp() {
   alert(
 `Transformer Inventory Listing (Inventory Only)
 
-This page automatically shows ONLY inventory statuses:
-${INVENTORY_STATUSES.join(", ")}
+Inventory statuses included:
+IN STOCK, NEW T.B.T., RECOVERED T.B.T., NEEDS TESTED, ON HOLD, NEEDS PAINTED
 
-How to use:
-1) Use Type/KVA/Primary/Secondary filters if needed
-2) Click Search to apply filters
-3) Search box filters within the current results
-4) Click a row to View/Edit (read-only)
-5) Preview/Print generate a report of the current filtered inventory list`
+Preview/Print now include a Criteria line showing your selected Type/KVA/Primary/Secondary.`
   );
 }
 
-// ---------- Init ----------
+/* =========================
+   INIT + EVENTS
+   ========================= */
 async function init() {
   try {
     const res = await fetch(DATA_URL, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     allRows = await res.json();
 
-    // Build dropdown options ONLY from inventory rows (so filters reflect what crews can actually pick from)
-    const inv = allRows.filter(isInventoryStatus);
+    const inv = allRows.filter(isInventoryRow);
 
-    populateSelect(elType, inv.map(r => safeStr(r.TYPE)), "All Types");
-    populateSelect(elKva,  inv.map(r => safeStr(r.KVA)),  "All KVA");
-    populateSelect(elPri,  inv.map(r => safeStr(r.PRI_VOLT)), "All Primary");
-    populateSelect(elSec,  inv.map(r => safeStr(r.SEC_VOLT)), "All Secondary");
+    populateSelect(elType, inv.map(r => r.TYPE), "All Types");
+    populateSelect(elKva,  inv.map(r => r.KVA),  "All KVA");
+    populateSelect(elPri,  inv.map(r => r.PRI_VOLT), "All Primary");
+    populateSelect(elSec,  inv.map(r => r.SEC_VOLT), "All Secondary");
 
-    // Access-like initial state: buttons disabled until Search
     filtersApplied = false;
     selectedRow = null;
     setButtonsState();
 
-    // Focus + auto-run once so page loads with inventory immediately
     elType.focus();
     applyFilters();
 
@@ -294,7 +349,6 @@ async function init() {
   }
 }
 
-// ---------- Events ----------
 btnApply.addEventListener("click", applyFilters);
 
 function markFiltersDirty() {
@@ -318,12 +372,15 @@ btnViewEdit.addEventListener("click", () => {
 btnPreview.addEventListener("click", () => openReportWindow(false));
 btnPrint.addEventListener("click", () => openReportWindow(true));
 
-btnQuit.addEventListener("click", () => location.reload());
+btnQuit.addEventListener("click", () => {
+  window.location.href = "./index.html";
+});
 
-if (btnHelp) btnHelp.addEventListener("click", showHelp);
 modalClose.addEventListener("click", closeModal);
 modal.addEventListener("click", (e) => {
   if (e.target === modal) closeModal();
 });
+
+if (btnHelp) btnHelp.addEventListener("click", showHelp);
 
 init();
