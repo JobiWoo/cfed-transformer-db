@@ -53,7 +53,7 @@ function safeStr(v) {
 
 function uniqSorted(values) {
   return Array.from(new Set(values.filter(v => safeStr(v) !== "")))
-    .sort((a, b) => safeStr(a).localeCompare(safeStr(b)));
+    .sort((a, b) => safeStr(a).localeCompare(safeStr(b), undefined, { numeric: true }));
 }
 
 function normalizeStatus(s) {
@@ -66,8 +66,11 @@ function populateSelect(selectEl, values, allLabel, preferredOrder = null) {
   let opts = present;
   if (preferredOrder && Array.isArray(preferredOrder)) {
     const presentSet = new Set(present.map(v => normalizeStatus(v)));
+    const preferredUpper = preferredOrder.map(v => normalizeStatus(v));
+
     const ordered = preferredOrder.filter(v => presentSet.has(normalizeStatus(v)));
-    const leftovers = present.filter(v => !ordered.includes(v));
+    const leftovers = present.filter(v => !preferredUpper.includes(normalizeStatus(v)));
+
     opts = [...ordered, ...leftovers];
   }
 
@@ -92,7 +95,7 @@ function applyFilters() {
 
   filteredRows = allRows.filter(r => {
     if (typeVal && safeStr(r.TYPE) !== typeVal) return false;
-    if (kvaVal && String(r.KVA) !== kvaVal) return false;
+    if (kvaVal && safeStr(r.KVA) !== kvaVal) return false;          // KVA can be numeric or string; safeStr handles both
     if (priVal && safeStr(r.PRI_VOLT) !== priVal) return false;
     if (secVal && safeStr(r.SEC_VOLT) !== secVal) return false;
     if (statusVal && safeStr(r.STATUS) !== statusVal) return false;
@@ -118,7 +121,7 @@ function applySearchAndRender() {
   elStatus.textContent = `Loaded ${allRows.length} • Showing ${rows.length}`;
 }
 
-// ---------- Grid ----------
+// ---------- Grid (on-screen list) ----------
 function renderGrid(rows) {
   tbody.innerHTML = "";
 
@@ -151,7 +154,7 @@ function renderGrid(rows) {
 
 // ---------- Modal ----------
 function openModalForRow(row) {
-  modalSubtitle.textContent = `Trans_ID: ${row.TRANS_ID || "—"}`;
+  modalSubtitle.textContent = `Trans_ID: ${safeStr(row.TRANS_ID) || "—"}`;
 
   modalBody.innerHTML = `
     <div class="kv">
@@ -171,53 +174,90 @@ function closeModal() {
   modal.classList.add("hidden");
 }
 
-// ---------- Reports ----------
-function openReportWindow(doPrint) {
-  if (!filtersApplied) return;
+// ---------- Report (Preview / Print) ----------
+// We will show ONLY these columns, in this order:
+const REPORT_COLUMNS = [
+  { key: "MFG",     label: "Manufacturer" },
+  { key: "SERIAL",  label: "Serial Number" },
+  { key: "IMP",     label: "Imp" },
+  { key: "LOCATION",label: "Location" },
+  { key: "STATUS",  label: "Status" },
+  { key: "REMARKS", label: "Remarks" }
+];
 
-  const rows = filteredRows;
+function buildReportHtml(rows, title) {
   const now = new Date().toLocaleString();
 
-  const html = `
+  const head = REPORT_COLUMNS.map(c => `<th>${c.label}</th>`).join("");
+
+  const body = rows.map(r => {
+    const tds = REPORT_COLUMNS.map(c => `<td>${safeStr(r[c.key])}</td>`).join("");
+    return `<tr>${tds}</tr>`;
+  }).join("");
+
+  return `
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Transformer Inventory Listing</title>
+  <title>${title}</title>
   <style>
-    body{ font-family: Cabin, Segoe UI, Arial; margin:18px; }
-    h1{ font-size:20px; margin-bottom:6px; }
-    .meta{ font-size:12px; color:#666; margin-bottom:12px; }
+    body{ font-family: Cabin, Segoe UI, Arial, sans-serif; margin:18px; color:#111827; }
+    h1{ font-size:20px; margin:0 0 6px 0; font-weight:900; }
+    .meta{ font-size:12px; color:#6b7280; margin-bottom:12px; }
     table{ width:100%; border-collapse:collapse; }
-    th{ background:#0b3a78; color:#fff; padding:8px; font-size:12px; }
-    td{ padding:7px 8px; border-bottom:1px solid #ddd; font-size:12px; }
+    th{
+      background:#0b3a78; color:#fff; text-align:left;
+      font-size:12px; padding:8px; position:sticky; top:0;
+    }
+    td{
+      padding:7px 8px;
+      border-bottom:1px solid #e5e7eb;
+      font-size:12px;
+      vertical-align:top;
+    }
+    /* Make Remarks readable */
+    td:last-child{
+      white-space:normal;
+      max-width:520px;
+      word-wrap:break-word;
+    }
+    @media print{
+      body{ margin:10mm; }
+      th{ position:static; }
+    }
   </style>
 </head>
 <body>
-  <h1>Transformer Inventory Listing</h1>
-  <div class="meta">Generated ${now} • Records ${rows.length}</div>
+  <h1>${title}</h1>
+  <div class="meta">Generated: ${now} • Records: ${rows.length}</div>
   <table>
-    <thead>
-      <tr>
-        <th>ID</th><th>Type</th><th>KVA</th><th>Status</th><th>Location</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rows.map(r => `
-        <tr>
-          <td>${r.TRANS_ID}</td>
-          <td>${safeStr(r.TYPE)}</td>
-          <td>${safeStr(r.KVA)}</td>
-          <td>${safeStr(r.STATUS)}</td>
-          <td>${safeStr(r.LOCATION)}</td>
-        </tr>
-      `).join("")}
-    </tbody>
+    <thead><tr>${head}</tr></thead>
+    <tbody>${body}</tbody>
   </table>
 </body>
 </html>`;
+}
+
+function openReportWindow(doPrint) {
+  if (!filtersApplied) return;
+
+  // Use current filtered rows + current search text
+  const q = safeStr(elSearch.value).toLowerCase();
+  const rows = (!q)
+    ? filteredRows
+    : filteredRows.filter(r =>
+        Object.values(r).map(safeStr).join(" ").toLowerCase().includes(q)
+      );
+
+  const html = buildReportHtml(rows, "Transformer Inventory Listing");
 
   const w = window.open("", "_blank");
+  if (!w) {
+    alert("Popup blocked. Please allow popups for Preview/Print.");
+    return;
+  }
+  w.document.open();
   w.document.write(html);
   w.document.close();
 
@@ -233,7 +273,10 @@ Default view: ${DEFAULT_STATUS}
 
 • Change filters, then click Search
 • Click a row to View/Edit
-• Preview / Print generate reports
+• Preview / Print generate a report of the current filtered list
+
+Report columns:
+Manufacturer, Serial Number, Imp, Location, Status, Remarks
 
 (Read-only demo)`
   );
@@ -241,50 +284,74 @@ Default view: ${DEFAULT_STATUS}
 
 // ---------- Init ----------
 async function init() {
-  const res = await fetch(DATA_URL, { cache: "no-store" });
-  allRows = await res.json();
+  try {
+    const res = await fetch(DATA_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    allRows = await res.json();
 
-  populateSelect(elType, allRows.map(r => r.TYPE), "All Types");
-  populateSelect(elKva, allRows.map(r => String(r.KVA)), "All KVA");
-  populateSelect(elPri, allRows.map(r => r.PRI_VOLT), "All Primary");
-  populateSelect(elSec, allRows.map(r => r.SEC_VOLT), "All Secondary");
+    // Populate dropdowns
+    populateSelect(elType, allRows.map(r => safeStr(r.TYPE)), "All Types");
+    populateSelect(elKva, allRows.map(r => safeStr(r.KVA)), "All KVA");
+    populateSelect(elPri, allRows.map(r => safeStr(r.PRI_VOLT)), "All Primary");
+    populateSelect(elSec, allRows.map(r => safeStr(r.SEC_VOLT)), "All Secondary");
 
-  populateSelect(
-    elStatusFilter,
-    allRows.map(r => r.STATUS),
-    "All Status",
-    STATUS_ORDER
-  );
+    populateSelect(
+      elStatusFilter,
+      allRows.map(r => safeStr(r.STATUS)),
+      "All Status",
+      STATUS_ORDER
+    );
 
-  // Default to IN STOCK
-  const exact = Array.from(elStatusFilter.options)
-    .map(o => o.value)
-    .find(v => normalizeStatus(v) === normalizeStatus(DEFAULT_STATUS));
+    // Default to IN STOCK if present
+    const optionValues = Array.from(elStatusFilter.options).map(o => o.value);
+    const exact = optionValues.find(v => normalizeStatus(v) === normalizeStatus(DEFAULT_STATUS));
+    if (exact) elStatusFilter.value = exact;
 
-  if (exact) elStatusFilter.value = exact;
+    // Initial state like Access
+    filtersApplied = false;
+    selectedRow = null;
+    setButtonsState();
 
-  filtersApplied = false;
-  selectedRow = null;
-  setButtonsState();
+    // Focus first filter + auto-apply default
+    elType.focus();
+    applyFilters();
 
-  elType.focus();
-  applyFilters();
+  } catch (err) {
+    elStatus.textContent = `Failed to load data: ${err.message}`;
+  }
 }
 
 // ---------- Events ----------
 btnApply.addEventListener("click", applyFilters);
-elType.addEventListener("change", () => filtersApplied = false);
-elKva.addEventListener("change", () => filtersApplied = false);
-elPri.addEventListener("change", () => filtersApplied = false);
-elSec.addEventListener("change", () => filtersApplied = false);
-elStatusFilter.addEventListener("change", () => filtersApplied = false);
+
+function markFiltersDirty() {
+  filtersApplied = false;
+  selectedRow = null;
+  setButtonsState();
+  document.querySelectorAll("tr.selected").forEach(x => x.classList.remove("selected"));
+}
+
+elType.addEventListener("change", markFiltersDirty);
+elKva.addEventListener("change", markFiltersDirty);
+elPri.addEventListener("change", markFiltersDirty);
+elSec.addEventListener("change", markFiltersDirty);
+elStatusFilter.addEventListener("change", markFiltersDirty);
 
 elSearch.addEventListener("input", applySearchAndRender);
-btnViewEdit.addEventListener("click", () => selectedRow && openModalForRow(selectedRow));
+
+btnViewEdit.addEventListener("click", () => {
+  if (selectedRow) openModalForRow(selectedRow);
+});
+
 btnPreview.addEventListener("click", () => openReportWindow(false));
 btnPrint.addEventListener("click", () => openReportWindow(true));
+
 btnQuit.addEventListener("click", () => location.reload());
+
 if (btnHelp) btnHelp.addEventListener("click", showHelp);
 modalClose.addEventListener("click", closeModal);
+modal.addEventListener("click", (e) => {
+  if (e.target === modal) closeModal();
+});
 
 init();
