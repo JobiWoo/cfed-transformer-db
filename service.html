@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Transformers In Service Listing</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="site-topbar">
+      <div class="brand">
+        <div class="brand-title">City of Cuyahoga Falls</div>
+        <div class="brand-subtitle">Electric Department • Transformer Inventory</div>
+      </div>
+
+      <div class="top-actions">
+        <a class="link-btn" href="./index.html">Main Menu</a>
+        <a class="link-btn" href="./inventory.html">Inventory</a>
+        <a class="link-btn" href="./pole.html">Pole Search</a>
+        <a class="link-btn" href="./serial.html">Serial Search</a>
+        <button id="btn-help" class="link-btn" type="button">Help</button>
+      </div>
+    </div>
+
+    <div class="app-header">
+      <div class="app-title-row">
+        <h1 class="app-title">Transformers In Service Listing</h1>
+        <div class="app-badge">Status = IN SERVICE • Read-Only Demo</div>
+      </div>
+
+      <div class="filters">
+        <div class="filter-row">
+          <label class="filter-label">Select Transformer Type &amp; KVA</label>
+
+          <select id="filter-type" class="select">
+            <option value="">All Types</option>
+          </select>
+
+          <select id="filter-kva" class="select">
+            <option value="">All KVA</option>
+          </select>
+
+          <div></div>
+          <div></div>
+        </div>
+
+        <div class="filter-row">
+          <label class="filter-label">Select Primary &amp; Secondary Voltage</label>
+
+          <select id="filter-pri" class="select">
+            <option value="">All Primary</option>
+          </select>
+
+          <select id="filter-sec" class="select">
+            <option value="">All Secondary</option>
+          </select>
+
+          <div></div>
+          <button id="btn-apply" class="btn btn-primary" type="button">Search</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="grid-panel">
+      <div class="grid-toolbar">
+        <input id="search" class="search" type="search" placeholder="Search within in-service list…" />
+        <div id="status" class="status">Loading…</div>
+      </div>
+
+      <div class="grid-wrap">
+        <table class="grid" id="grid">
+          <thead>
+            <tr>
+              <th>Feeder</th>
+              <th>Address</th>
+              <th>Date Installed</th>
+              <th>Serial</th>
+            </tr>
+          </thead>
+          <tbody id="grid-body"></tbody>
+        </table>
+      </div>
+
+      <div class="hint">
+        This page shows only transformers with <strong>Status = IN SERVICE</strong>.
+        Click a row to enable View/Edit.
+      </div>
+    </section>
+
+    <aside class="button-bar">
+      <button id="btn-viewedit" class="btn btn-icon" disabled type="button">
+        <span class="icon">✎</span>
+        <span>View/Edit</span>
+      </button>
+
+      <button id="btn-preview" class="btn btn-icon" disabled type="button">
+        <span class="icon">🔍</span>
+        <span>Preview</span>
+      </button>
+
+      <button id="btn-print" class="btn btn-icon" disabled type="button">
+        <span class="icon">🖨️</span>
+        <span>Print</span>
+      </button>
+
+      <button id="btn-quit" class="btn btn-icon" type="button">
+        <span class="icon">⏻</span>
+        <span>Quit</span>
+      </button>
+    </aside>
+  </main>
+
+  <!-- VIEW / EDIT MODAL (read-only details) -->
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">View / Edit Transformer</div>
+          <div id="modal-subtitle" class="modal-subtitle"></div>
+        </div>
+        <button id="modal-close" class="btn btn-small" type="button">Close</button>
+      </div>
+
+      <div id="modal-body" class="modal-body"></div>
+
+      <div class="modal-footer">
+        <div class="note">
+          Read-only demo. Later, edits will save to SQL Server (with permissions).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="service.js"></script>
+</body>
+</html>
