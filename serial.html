@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Search By Serial Number</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="site-topbar">
+      <div class="brand">
+        <div class="brand-title">City of Cuyahoga Falls</div>
+        <div class="brand-subtitle">Electric Department • Transformer Inventory</div>
+      </div>
+
+      <div class="top-actions">
+        <a class="link-btn" href="./index.html">Main Menu</a>
+        <a class="link-btn" href="./inventory.html">Inventory</a>
+        <a class="link-btn" href="./pole.html">Pole Search</a>
+        <button id="btn-help" class="link-btn" type="button">Help</button>
+      </div>
+    </div>
+
+    <div class="app-header">
+      <div class="app-title-row">
+        <h1 class="app-title">Search By Serial Number</h1>
+        <div class="app-badge">Form View • Read-Only Demo</div>
+      </div>
+
+      <div class="filters">
+        <div class="filter-row">
+          <label class="filter-label">Enter Serial Number</label>
+
+          <input id="serial-input" class="search" type="text" placeholder="e.g. 2246025 (do not include CP prefix)" />
+
+          <div></div>
+          <div></div>
+
+          <button id="btn-serial-search" class="btn btn-primary" type="button">Search</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="grid-panel">
+      <div class="grid-toolbar">
+        <div id="status" class="status">Enter a serial number and click Search.</div>
+      </div>
+
+      <!-- FORM CARD -->
+      <div class="serial-form">
+
+        <div class="serial-form-row">
+          <div class="serial-field">
+            <div class="serial-label">Trans_ID</div>
+            <div id="f-transid" class="serial-value blank">—</div>
+          </div>
+          <div class="serial-field">
+            <div class="serial-label">Serial</div>
+            <div id="f-serial" class="serial-value blank">—</div>
+          </div>
+          <div class="serial-field">
+            <div class="serial-label">Manufacturer</div>
+            <div id="f-mfg" class="serial-value blank">—</div>
+          </div>
+        </div>
+
+        <div class="serial-form-row">
+          <div class="serial-field">
+            <div class="serial-label">Type</div>
+            <div id="f-type" class="serial-value blank">—</div>
+          </div>
+          <div class="serial-field">
+            <div class="serial-label">KVA</div>
+            <div id="f-kva" class="serial-value blank">—</div>
+          </div>
+          <div class="serial-field">
+            <div class="serial-label">Imp</div>
+            <div id="f-imp" class="serial-value blank">—</div>
+          </div>
+        </div>
+
+        <div class="serial-form-row">
+          <div class="serial-field">
+            <div class="serial-label">Primary</div>
+            <div id="f-pri" class="serial-value blank">—</div>
+          </div>
+          <div class="serial-field">
+            <div class="serial-label">Secondary</div>
+            <div id="f-sec" class="serial-value blank">—</div>
+          </div>
+          <div class="serial-field">
+            <div class="serial-label">Status</div>
+            <div id="f-status" class="serial-value blank">—</div>
+          </div>
+        </div>
+
+        <div class="serial-form-row">
+          <div class="serial-field">
+            <div class="serial-label">Location</div>
+            <div id="f-location" class="serial-value blank">—</div>
+          </div>
+          <div class="serial-field">
+            <div class="serial-label">Pole No</div>
+            <div id="f-pole" class="serial-value blank">—</div>
+          </div>
+          <div class="serial-field">
+            <div class="serial-label">Feeder</div>
+            <div id="f-feeder" class="serial-value blank">—</div>
+          </div>
+        </div>
+
+        <div class="serial-form-row">
+          <div class="serial-field wide">
+            <div class="serial-label">Remarks</div>
+            <div id="f-remarks" class="serial-value blank multiline">—</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="hint">
+        This page is read-only for now. Later, fields will become editable and will save back to SQL Server.
+      </div>
+    </section>
+
+    <aside class="button-bar">
+      <button id="btn-preview" class="btn btn-icon" disabled type="button">
+        <span class="icon">🔍</span>
+        <span>Preview</span>
+      </button>
+
+      <button id="btn-quit" class="btn btn-icon" type="button">
+        <span class="icon">⏻</span>
+        <span>Quit</span>
+      </button>
+    </aside>
+  </main>
+
+  <script src="serial.js"></script>
+</body>
+</html>
