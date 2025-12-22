@@ -1,7 +1,7 @@
 const DATA_URL = "./data/transformers.json";
 
 /* =========================
-   Central helpers / formatting
+   Helpers / formatting
    ========================= */
 function safeStr(v) {
   if (v === null || v === undefined) return "";
@@ -44,8 +44,31 @@ function computeAddress(row) {
   return both || "—";
 }
 function computeFeeder(row) {
-  // prefer FEEDER then Feeder
   return safeStr(row.FEEDER) || safeStr(row.Feeder) || "—";
+}
+
+/* =========================
+   Status badge helpers
+   ========================= */
+function statusClass(status) {
+  const s = normalizeStatus(status);
+
+  if (s === "IN STOCK") return "status-green";
+  if (s === "IN SERVICE") return "status-blue";
+  if (s === "ON HOLD") return "status-amber";
+  if (s === "NEEDS TESTED") return "status-orange";
+  if (s === "SCRAPPED") return "status-red";
+
+  if (s === "NEEDS PAINTED") return "status-orange";
+  if (s === "RECOVERED T.B.T." || s === "NEW T.B.T.") return "status-green";
+
+  return "status-gray";
+}
+
+function renderStatusBadge(status) {
+  const text = safeStr(status) || "—";
+  const cls = statusClass(text);
+  return `<span class="status-pill ${cls}">${text}</span>`;
 }
 
 /* =========================
@@ -91,7 +114,6 @@ function setButtonsState() {
   btnPrint.disabled = !filtersApplied;
   btnViewEdit.disabled = !(filtersApplied && selectedRow);
 }
-
 function clearSelection() {
   selectedRow = null;
   btnViewEdit.disabled = true;
@@ -116,8 +138,11 @@ function renderGrid(rows) {
     const dateInstalled = fmtEpochMs(r.DATE_INSTALLED);
     const serial = safeStr(r.SERIAL);
 
+    // Subtle enhancement: show status badge next to feeder
+    const feederCell = `${feeder} <span style="margin-left:8px;">${renderStatusBadge(r.STATUS)}</span>`;
+
     tr.innerHTML = `
-      <td title="${feeder}">${feeder}</td>
+      <td title="${feeder}">${feederCell}</td>
       <td title="${address}">${address}</td>
       <td title="${dateInstalled}">${dateInstalled || "—"}</td>
       <td title="${serial}">${serial}</td>
@@ -198,7 +223,6 @@ function openModalForRow(row) {
 
   modal.classList.remove("hidden");
 }
-
 function closeModal() {
   modal.classList.add("hidden");
 }
@@ -211,6 +235,7 @@ function buildReportHtml(rows, title) {
 
   const head = `
     <th>Feeder</th>
+    <th>Status</th>
     <th>Address</th>
     <th>Date Installed</th>
     <th>Serial</th>
@@ -224,6 +249,7 @@ function buildReportHtml(rows, title) {
 
     return `<tr>
       <td>${feeder}</td>
+      <td>${renderStatusBadge(r.STATUS)}</td>
       <td>${address}</td>
       <td>${dateInstalled || "—"}</td>
       <td>${serial}</td>
@@ -243,6 +269,21 @@ function buildReportHtml(rows, title) {
     table{ width:100%; border-collapse:collapse; }
     th{ background:#0b3a78; color:#fff; text-align:left; font-size:12px; padding:8px; position:sticky; top:0; }
     td{ padding:7px 8px; border-bottom:1px solid #e5e7eb; font-size:12px; white-space:nowrap; }
+
+    /* Inline copy of status pill styles for print window */
+    .status-pill{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:6px 10px; border-radius:999px;
+      font-weight:900; font-size:12px; letter-spacing:.02em;
+      border:1px solid #d8e0ea; background:#f7f9fc; color:#1f2937;
+    }
+    .status-green{ background:#e8f7ee; border-color:#bfe7cd; color:#0f5132; }
+    .status-blue{  background:#e8f1ff; border-color:#c9dcff; color:#0b3a78; }
+    .status-amber{ background:#fff4d6; border-color:#ffe1a6; color:#7a4a00; }
+    .status-orange{background:#ffedd5; border-color:#ffd6a1; color:#7a2f00; }
+    .status-red{   background:#fde8e8; border-color:#f5bebe; color:#7a1111; }
+    .status-gray{  background:#f1f5f9; border-color:#d5dde7; color:#334155; }
+
     @media print{ body{ margin:10mm; } th{ position:static; } }
   </style>
 </head>
@@ -288,6 +329,7 @@ function showHelp() {
 `Transformers In Service Listing
 
 This page shows ONLY transformers with Status = ${REQUIRED_STATUS}.
+Status is shown with a blue badge to speed up scanning.
 
 Use Type/KVA/Primary/Secondary filters as needed, then click Search.
 Preview/Print reflect the current filtered list.`
@@ -303,21 +345,17 @@ async function init() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     allRows = await res.json();
 
-    // hard filter to IN SERVICE (case/space tolerant)
     baseRows = allRows.filter(r => normalizeStatus(r.STATUS) === REQUIRED_STATUS);
 
-    // Populate dropdowns from baseRows so options reflect in-service dataset
     populateSelect(elType, baseRows.map(r => r.TYPE), "All Types");
     populateSelect(elKva,  baseRows.map(r => r.KVA),  "All KVA");
     populateSelect(elPri,  baseRows.map(r => r.PRI_VOLT), "All Primary");
     populateSelect(elSec,  baseRows.map(r => r.SEC_VOLT), "All Secondary");
 
-    // Access-like: disabled until Search (but we can auto-run once like Inventory)
     filtersApplied = false;
     clearSelection();
     setButtonsState();
 
-    // Auto-apply once so the list loads immediately
     applyFilters();
 
   } catch (err) {
