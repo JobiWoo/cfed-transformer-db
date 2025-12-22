@@ -1,58 +1,90 @@
 const DATA_URL = "./data/transformers.json";
 
 /* =========================
-   Formatting helpers
+   Helpers / formatting
    ========================= */
 function safeStr(v) {
   if (v === null || v === undefined) return "";
-  return String(v);
+  return String(v).trim();
 }
-function trimStr(v) {
-  return safeStr(v).trim();
+
+function normalizeStatus(v) {
+  // Robust normalization:
+  // - trim
+  // - uppercase
+  // - replace hyphen/underscore with space
+  // - remove periods
+  // - collapse multiple spaces
+  return safeStr(v)
+    .toUpperCase()
+    .replace(/[-_]/g, " ")
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
+
 function toNumberOrNaN(v) {
   if (v === null || v === undefined || v === "") return NaN;
   const n = Number(v);
   return Number.isNaN(n) ? NaN : n;
 }
-function fmtFixed(v, decimals) {
-  const n = toNumberOrNaN(v);
-  if (Number.isNaN(n)) return trimStr(v);
-  return n.toFixed(decimals);
-}
+
 function fmtEpochMs(v) {
   if (v === null || v === undefined || v === "") return "";
   const n = toNumberOrNaN(v);
-  if (Number.isNaN(n)) return trimStr(v);
+  if (Number.isNaN(n)) return safeStr(v);
+
+  // heuristic: ms timestamps are large
   if (n > 300000000000) {
     const d = new Date(n);
     if (!Number.isNaN(d.getTime())) return d.toLocaleDateString();
   }
-  return trimStr(v);
+  return safeStr(v);
 }
+
+function uniqSorted(values) {
+  return Array.from(new Set(values.map(safeStr).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+function populateSelect(selectEl, values, allLabel) {
+  const opts = uniqSorted(values);
+  selectEl.innerHTML =
+    `<option value="">${allLabel}</option>` +
+    opts.map(v => `<option value="${v}">${v}</option>`).join("");
+}
+
+function computeAddress(row) {
+  const hse = safeStr(row.HSE_NUM);
+  const street = safeStr(row.STREET);
+  const both = [hse, street].filter(Boolean).join(" ");
+  return both || "—";
+}
+
 function computeFeeder(row) {
-  return trimStr(row.FEEDER) || trimStr(row.Feeder) || "";
-}
-function normalizeUpper(v) {
-  return trimStr(v).toUpperCase();
+  return safeStr(row.FEEDER) || safeStr(row.Feeder) || "—";
 }
 
 /* =========================
    Status badge helpers
    ========================= */
 function statusClass(status) {
-  const s = normalizeUpper(status);
+  const s = normalizeStatus(status);
+
   if (s === "IN STOCK") return "status-green";
   if (s === "IN SERVICE") return "status-blue";
   if (s === "ON HOLD") return "status-amber";
   if (s === "NEEDS TESTED") return "status-orange";
   if (s === "SCRAPPED") return "status-red";
+
   if (s === "NEEDS PAINTED") return "status-orange";
-  if (s === "RECOVERED T.B.T." || s === "NEW T.B.T.") return "status-green";
+  if (s === "RECOVERED TBT" || s === "RECOVERED T B T" || s === "NEW TBT" || s === "NEW T B T") return "status-green";
+
   return "status-gray";
 }
+
 function renderStatusBadge(status) {
-  const text = trimStr(status) || "—";
+  const text = safeStr(status) || "—";
   const cls = statusClass(text);
   return `<span class="status-pill ${cls}">${text}</span>`;
 }
@@ -60,309 +92,201 @@ function renderStatusBadge(status) {
 /* =========================
    Elements
    ========================= */
-const serialInput = document.getElementById("serial-input");
-const btnSearch = document.getElementById("btn-serial-search");
+const elType = document.getElementById("filter-type");
+const elKva  = document.getElementById("filter-kva");
+const elPri  = document.getElementById("filter-pri");
+const elSec  = document.getElementById("filter-sec");
+
+const btnApply   = document.getElementById("btn-apply");
+const btnViewEdit= document.getElementById("btn-viewedit");
 const btnPreview = document.getElementById("btn-preview");
-const btnNew = document.getElementById("btn-new");
-const btnClose = document.getElementById("btn-close");
-const btnHelp = document.getElementById("btn-help");
+const btnPrint   = document.getElementById("btn-print");
+const btnQuit    = document.getElementById("btn-quit");
+const btnHelp    = document.getElementById("btn-help");
+
+const elSearch = document.getElementById("search");
 const elStatus = document.getElementById("status");
+const tbody    = document.getElementById("grid-body");
 
-// tabs
-const tabButtons = Array.from(document.querySelectorAll(".tab"));
-const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+const modal        = document.getElementById("modal");
+const modalClose   = document.getElementById("modal-close");
+const modalBody    = document.getElementById("modal-body");
+const modalSubtitle= document.getElementById("modal-subtitle");
 
-// record
+/* =========================
+   State
+   ========================= */
+const REQUIRED_STATUS_NORM = "IN SERVICE";
+
 let allRows = [];
-let currentRecord = null;
+let baseRows = [];
+let filteredRows = [];
+let selectedRow = null;
+let filtersApplied = false;
 
 /* =========================
-   UI helpers
+   UI State
    ========================= */
-function setValue(elId, value, isMultiline=false) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  const v = trimStr(value);
-  el.textContent = v ? v : "—";
-  if (v) el.classList.remove("blank");
-  else el.classList.add("blank");
-  if (isMultiline) el.classList.add("multiline");
+function setButtonsState() {
+  btnPreview.disabled = !filtersApplied;
+  btnPrint.disabled = !filtersApplied;
+  btnViewEdit.disabled = !(filtersApplied && selectedRow);
 }
-
-function setHtmlValue(elId, html, isBlank=false) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  el.innerHTML = html;
-  if (isBlank) el.classList.add("blank");
-  else el.classList.remove("blank");
-}
-
-function resetAllFields() {
-  currentRecord = null;
-  btnPreview.disabled = true;
-
-  // Status & Location
-  setValue("s-type", "");
-  setValue("s-kva", "");
-  setValue("s-pri", "");
-  setValue("s-sec", "");
-  setValue("s-location", "");
-  setValue("s-hse", "");
-  setValue("s-street", "");
-  setValue("s-install", "");
-  setValue("s-pole", "");
-  setValue("s-feeder", "");
-  setValue("s-phase", "");
-  setValue("s-block", "");
-  setValue("s-secdist", "");
-  setValue("s-nocust", "");
-  setValue("s-banked", "");
-  setValue("s-custowned", "");
-  setValue("s-date-installed", "");
-  setValue("s-date-recovered", "");
-  setValue("s-remarks", "", true);
-  setValue("s-today", "");
-  setValue("s-user", "");
-
-  // Status badge field (HTML)
-  setHtmlValue("s-status", "—", true);
-
-  // Nameplate
-  setValue("n-type", "");
-  setValue("n-kva", "");
-  setValue("n-pri", "");
-  setValue("n-sec", "");
-  setValue("n-mfg", "");
-  setValue("n-serial", "");
-  setValue("n-imp", "");
-  setValue("n-year", "");
-  setValue("n-today", "");
-  setValue("n-user", "");
-
-  // Test
-  setValue("t-type", "");
-  setValue("t-kva", "");
-  setValue("t-pri", "");
-  setValue("t-sec", "");
-  setValue("t-date-tested", "");
-  setValue("t-pcb-sign", "");
-  setValue("t-pcb-amt", "");
-  setValue("t-weight", "");
-  setValue("t-gallons", "");
-  setValue("t-megger", "");
-  setValue("t-ttr", "", true);
-  setValue("t-polarity", "");
-  setValue("t-test-remarks", "", true);
-  setValue("t-today", "");
-  setValue("t-user", "");
-
-  // Inventory
-  setValue("i-type", "");
-  setValue("i-kva", "");
-  setValue("i-pri", "");
-  setValue("i-sec", "");
-  setValue("i-price", "");
-  setValue("i-date-inventoried", "");
-  setValue("i-date-delivered", "");
-  setValue("i-date-scrapped", "");
-  setValue("i-scrap-remarks", "", true);
-  setValue("i-today", "");
-  setValue("i-user", "");
-
-  elStatus.textContent = "Enter a serial number and click Search.";
-}
-
-function activateTab(tabId) {
-  tabButtons.forEach(b => b.classList.toggle("active", b.dataset.tab === tabId));
-  tabPanels.forEach(p => p.classList.toggle("active", p.id === tabId));
+function clearSelection() {
+  selectedRow = null;
+  btnViewEdit.disabled = true;
+  document.querySelectorAll("tr.selected").forEach(x => x.classList.remove("selected"));
 }
 
 /* =========================
-   Robust serial normalization
+   Grid
    ========================= */
-function normalizeSerialForMatch(v) {
-  let s = trimStr(v);
-  s = s.replace(/\s+/g, "");
-  s = s.replace(/[-_]/g, "");
-  s = s.toUpperCase();
-  return s;
-}
-function normalizeUserSerial(raw) {
-  let s = trimStr(raw);
-  if (s.slice(0, 2).toUpperCase() === "CP") {
-    alert("Do Not Use the CP Prefix When Searching for Cooper Transformers.\n\nCP will be removed automatically.");
-    s = s.slice(2);
-  }
-  return normalizeSerialForMatch(s);
-}
+function renderGrid(rows) {
+  tbody.innerHTML = "";
 
-/* =========================
-   Search
-   ========================= */
-function findBySerial(serialKey) {
-  const key = normalizeSerialForMatch(serialKey);
-  if (!key) return null;
-
-  let rec = allRows.find(r => normalizeSerialForMatch(r.SERIAL) === key);
-  if (rec) return rec;
-
-  const keyNum = String(Number(key));
-  if (keyNum !== "NaN") {
-    rec = allRows.find(r => String(Number(normalizeSerialForMatch(r.SERIAL))) === keyNum);
-    if (rec) return rec;
-  }
-  return null;
-}
-
-function populateFromRecord(r) {
-  const type = trimStr(r.TYPE);
-  const kva  = trimStr(r.KVA);
-  const pri  = trimStr(r.PRI_VOLT);
-  const sec  = trimStr(r.SEC_VOLT);
-  const today = fmtEpochMs(r.TODAY);
-  const user = trimStr(r.USERNAME);
-
-  // Status & location
-  setValue("s-type", type);
-  setValue("s-kva", kva);
-  setValue("s-pri", pri);
-  setValue("s-sec", sec);
-
-  // Status as badge
-  const statusText = trimStr(r.STATUS);
-  setHtmlValue("s-status", renderStatusBadge(statusText), !statusText);
-
-  setValue("s-location", trimStr(r.LOCATION));
-  setValue("s-hse", trimStr(r.HSE_NUM));
-  setValue("s-street", trimStr(r.STREET));
-  setValue("s-install", trimStr(r.INSTALLATION));
-  setValue("s-pole", trimStr(r.POLE_NO));
-  setValue("s-feeder", computeFeeder(r));
-  setValue("s-phase", trimStr(r.PHASE));
-  setValue("s-block", trimStr(r.FEEDER_BLOCK));
-  setValue("s-secdist", trimStr(r.SEC_DIST));
-  setValue("s-nocust", trimStr(r.NO_CUST));
-  setValue("s-banked", trimStr(r["Banked Installation"]) || trimStr(r.Banked) || trimStr(r.BANKED));
-  setValue("s-custowned", trimStr(r.CUST_OWNED));
-  setValue("s-date-installed", fmtEpochMs(r.DATE_INSTALLED));
-  setValue("s-date-recovered", fmtEpochMs(r.DATE_RECOVERED));
-  setValue("s-remarks", trimStr(r.REMARKS), true);
-  setValue("s-today", today);
-  setValue("s-user", user);
-
-  // Nameplate
-  setValue("n-type", type);
-  setValue("n-kva", kva);
-  setValue("n-pri", pri);
-  setValue("n-sec", sec);
-  setValue("n-mfg", trimStr(r.MFG));
-  setValue("n-serial", trimStr(r.SERIAL));
-  setValue("n-imp", fmtFixed(r.IMP, 2));
-  setValue("n-year", trimStr(r.YEAR_MFG));
-  setValue("n-today", today);
-  setValue("n-user", user);
-
-  // Test
-  setValue("t-type", type);
-  setValue("t-kva", kva);
-  setValue("t-pri", pri);
-  setValue("t-sec", sec);
-  setValue("t-date-tested", fmtEpochMs(r.DATE_TESTED));
-  setValue("t-pcb-sign", trimStr(r.PCB_SIGN));
-  setValue("t-pcb-amt", trimStr(r.PCB_AMNT));
-  setValue("t-weight", trimStr(r.WEIGHT));
-  setValue("t-gallons", trimStr(r.GALLONS));
-  setValue("t-megger", trimStr(r.MEGGER_RESULTS));
-  setValue("t-ttr", trimStr(r.TTR_RESULTS), true);
-  setValue("t-polarity", trimStr(r.POLARITY));
-  setValue("t-test-remarks", trimStr(r.TEST_REMARKS), true);
-  setValue("t-today", today);
-  setValue("t-user", user);
-
-  // Inventory
-  setValue("i-type", type);
-  setValue("i-kva", kva);
-  setValue("i-pri", pri);
-  setValue("i-sec", sec);
-  setValue("i-price", trimStr(r.PRICE));
-  setValue("i-date-inventoried", fmtEpochMs(r.DATE_INVENTORIED));
-  setValue("i-date-delivered", fmtEpochMs(r.DATE_DELIVERED));
-  setValue("i-date-scrapped", fmtEpochMs(r.DATE_SCRAPPED));
-  setValue("i-scrap-remarks", trimStr(r.SCRAP_REMARKS), true);
-  setValue("i-today", today);
-  setValue("i-user", user);
-
-  btnPreview.disabled = false;
-}
-
-function runSearch() {
-  resetAllFields();
-
-  const raw = serialInput.value;
-  const key = normalizeUserSerial(raw);
-
-  if (!key) {
-    alert("Enter a Serial Number to search.");
-    serialInput.focus();
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="padding:14px;color:#5b677a;">No records found.</td></tr>`;
     return;
   }
 
-  const rec = findBySerial(key);
-  if (!rec) {
-    alert(`No Transformer with Serial Number ${key} exists in the dataset.`);
-    serialInput.focus();
-    elStatus.textContent = `No match for serial: ${key}`;
-    return;
-  }
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    const feeder = computeFeeder(r);
+    const address = computeAddress(r);
+    const dateInstalled = fmtEpochMs(r.DATE_INSTALLED);
+    const serial = safeStr(r.SERIAL);
 
-  currentRecord = rec;
-  populateFromRecord(rec);
+    const feederCell = `${feeder} <span style="margin-left:8px;">${renderStatusBadge(r.STATUS)}</span>`;
 
-  elStatus.textContent = `Found Serial ${trimStr(rec.SERIAL)} • Trans_ID ${trimStr(rec.TRANS_ID)}`;
-  activateTab("tab-status");
+    tr.innerHTML = `
+      <td title="${feeder}">${feederCell}</td>
+      <td title="${address}">${address}</td>
+      <td title="${dateInstalled}">${dateInstalled || "—"}</td>
+      <td title="${serial}">${serial}</td>
+    `;
+
+    tr.addEventListener("click", () => {
+      document.querySelectorAll("tr.selected").forEach(x => x.classList.remove("selected"));
+      tr.classList.add("selected");
+      selectedRow = r;
+      setButtonsState();
+    });
+
+    tbody.appendChild(tr);
+  });
 }
 
 /* =========================
-   Preview (status badge included)
+   Filtering
    ========================= */
-function buildPreviewHtml(r) {
+function applyFilters() {
+  const typeVal = elType.value;
+  const kvaVal  = elKva.value;
+  const priVal  = elPri.value;
+  const secVal  = elSec.value;
+
+  filteredRows = baseRows.filter(r => {
+    if (typeVal && safeStr(r.TYPE) !== typeVal) return false;
+    if (kvaVal  && safeStr(r.KVA) !== kvaVal) return false;
+    if (priVal  && safeStr(r.PRI_VOLT) !== priVal) return false;
+    if (secVal  && safeStr(r.SEC_VOLT) !== secVal) return false;
+    return true;
+  });
+
+  filtersApplied = true;
+  clearSelection();
+  setButtonsState();
+  applySearchAndRender();
+}
+
+function applySearchAndRender() {
+  const q = safeStr(elSearch.value).toLowerCase();
+
+  const rows = (!q)
+    ? filteredRows
+    : filteredRows.filter(r =>
+        Object.values(r).map(safeStr).join(" ").toLowerCase().includes(q)
+      );
+
+  renderGrid(rows);
+  elStatus.textContent = `In Service records ${rows.length} (IN SERVICE base: ${baseRows.length} • total: ${allRows.length})`;
+}
+
+function markFiltersDirty() {
+  filtersApplied = false;
+  clearSelection();
+  setButtonsState();
+}
+
+/* =========================
+   Modal
+   ========================= */
+function openModalForRow(row) {
+  if (!row) return;
+
+  modalSubtitle.textContent =
+    `Trans_ID: ${safeStr(row.TRANS_ID) || "—"} • Serial: ${safeStr(row.SERIAL) || "—"} • Status: ${safeStr(row.STATUS) || "—"}`;
+
+  modalBody.innerHTML = `
+    <div class="kv">
+      ${Object.keys(row).map(k => `
+        <div class="field">
+          <div class="label">${k}</div>
+          <div class="value">${safeStr(row[k]) || "—"}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+
+  modal.classList.remove("hidden");
+}
+function closeModal() {
+  modal.classList.add("hidden");
+}
+
+/* =========================
+   Preview / Print
+   ========================= */
+function buildReportHtml(rows, title) {
   const now = new Date().toLocaleString();
-  const rows = [
-    ["Serial", trimStr(r.SERIAL)],
-    ["Manufacturer", trimStr(r.MFG)],
-    ["Type", trimStr(r.TYPE)],
-    ["KVA", trimStr(r.KVA)],
-    ["Primary", trimStr(r.PRI_VOLT)],
-    ["Secondary", trimStr(r.SEC_VOLT)],
-    ["Imp", fmtFixed(r.IMP, 2)],
-    ["Status", renderStatusBadge(trimStr(r.STATUS))],
-    ["Location", trimStr(r.LOCATION)],
-    ["Pole No", trimStr(r.POLE_NO)],
-    ["Feeder", computeFeeder(r)],
-    ["Remarks", trimStr(r.REMARKS)]
-  ];
 
-  const body = rows.map(([k,v], idx) => `
-    <tr>
-      <td style="width:220px;font-weight:900;color:#0a2f60;">${k}</td>
-      <td style="white-space:pre-wrap;">${v || "—"}</td>
-    </tr>
-  `).join("");
+  const head = `
+    <th>Feeder</th>
+    <th>Status</th>
+    <th>Address</th>
+    <th>Date Installed</th>
+    <th>Serial</th>
+  `;
+
+  const body = rows.map(r => {
+    const feeder = computeFeeder(r);
+    const address = computeAddress(r);
+    const dateInstalled = fmtEpochMs(r.DATE_INSTALLED);
+    const serial = safeStr(r.SERIAL);
+
+    return `<tr>
+      <td>${feeder}</td>
+      <td>${renderStatusBadge(r.STATUS)}</td>
+      <td>${address}</td>
+      <td>${dateInstalled || "—"}</td>
+      <td>${serial}</td>
+    </tr>`;
+  }).join("");
 
   return `
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Transformer Record</title>
+  <title>${title}</title>
   <style>
     body{ font-family: Cabin, Segoe UI, Arial, sans-serif; margin:18px; color:#111827; }
     h1{ font-size:20px; margin:0 0 6px 0; font-weight:900; }
     .meta{ font-size:12px; color:#6b7280; margin-bottom:12px; }
     table{ width:100%; border-collapse:collapse; }
-    td{ padding:8px 10px; border-bottom:1px solid #e5e7eb; font-size:13px; vertical-align:top; }
-    .wrap{ border:1px solid #d8e0ea; border-radius:12px; overflow:hidden; }
-    .hdr{ background:#0b3a78; color:#fff; padding:10px 12px; font-weight:900; }
+    th{ background:#0b3a78; color:#fff; text-align:left; font-size:12px; padding:8px; position:sticky; top:0; }
+    td{ padding:7px 8px; border-bottom:1px solid #e5e7eb; font-size:12px; white-space:nowrap; }
+
     .status-pill{
       display:inline-flex; align-items:center; justify-content:center;
       padding:6px 10px; border-radius:999px;
@@ -375,85 +299,114 @@ function buildPreviewHtml(r) {
     .status-orange{background:#ffedd5; border-color:#ffd6a1; color:#7a2f00; }
     .status-red{   background:#fde8e8; border-color:#f5bebe; color:#7a1111; }
     .status-gray{  background:#f1f5f9; border-color:#d5dde7; color:#334155; }
-    @media print{ body{ margin:10mm; } }
+
+    @media print{ body{ margin:10mm; } th{ position:static; } }
   </style>
 </head>
 <body>
-  <h1>Transformer Record</h1>
-  <div class="meta">Generated: ${now}</div>
-  <div class="wrap">
-    <div class="hdr">Serial: ${trimStr(r.SERIAL)} • Trans_ID: ${trimStr(r.TRANS_ID)}</div>
-    <table><tbody>${body}</tbody></table>
-  </div>
+  <h1>${title}</h1>
+  <div class="meta">Status: IN SERVICE • Generated: ${now} • Records: ${rows.length}</div>
+  <table>
+    <thead><tr>${head}</tr></thead>
+    <tbody>${body}</tbody>
+  </table>
 </body>
 </html>`;
 }
 
-function openPreview() {
-  if (!currentRecord) return;
-  const html = buildPreviewHtml(currentRecord);
+function openReportWindow(doPrint) {
+  if (!filtersApplied) return;
+
+  const q = safeStr(elSearch.value).toLowerCase();
+  const rows = (!q)
+    ? filteredRows
+    : filteredRows.filter(r =>
+        Object.values(r).map(safeStr).join(" ").toLowerCase().includes(q)
+      );
+
+  const html = buildReportHtml(rows, "Transformers In Service Listing");
   const w = window.open("", "_blank");
   if (!w) {
-    alert("Popup blocked. Please allow popups for Preview.");
+    alert("Popup blocked. Please allow popups for Preview/Print.");
     return;
   }
   w.document.open();
   w.document.write(html);
   w.document.close();
+
+  if (doPrint) setTimeout(() => w.print(), 250);
 }
 
 /* =========================
-   Help / init / events
+   Help
    ========================= */
 function showHelp() {
   alert(
-`Search By Serial Number
+`Transformers In Service Listing
 
-• Serial matching is tolerant of case and hidden spaces.
-• Status is shown as a colored badge to speed scanning.
-• Tabs display Status/Location, Nameplate, Test, Inventory.
+This page shows ONLY transformers with Status = IN SERVICE.
+If the list is empty, it usually means the status text in data isn't matching.
 
-Read-only for now; later will save to SQL Server.`
+This version uses robust matching (case/spacing/punctuation tolerant).`
   );
 }
 
+/* =========================
+   Init
+   ========================= */
 async function init() {
   try {
     const res = await fetch(DATA_URL, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     allRows = await res.json();
 
-    resetAllFields();
-    serialInput.focus();
-    elStatus.textContent = `Loaded ${allRows.length} transformers • Ready to search.`;
+    baseRows = allRows.filter(r => normalizeStatus(r.STATUS) === REQUIRED_STATUS_NORM);
 
-    tabButtons.forEach(btn => {
-      btn.addEventListener("click", () => activateTab(btn.dataset.tab));
-    });
+    populateSelect(elType, baseRows.map(r => r.TYPE), "All Types");
+    populateSelect(elKva,  baseRows.map(r => r.KVA),  "All KVA");
+    populateSelect(elPri,  baseRows.map(r => r.PRI_VOLT), "All Primary");
+    populateSelect(elSec,  baseRows.map(r => r.SEC_VOLT), "All Secondary");
+
+    filtersApplied = false;
+    clearSelection();
+    setButtonsState();
+
+    applyFilters();
 
   } catch (err) {
-    resetAllFields();
     elStatus.textContent = `Failed to load data: ${err.message}`;
   }
 }
 
-btnSearch.addEventListener("click", runSearch);
-serialInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") runSearch();
+/* =========================
+   Events
+   ========================= */
+btnApply.addEventListener("click", applyFilters);
+
+elType.addEventListener("change", markFiltersDirty);
+elKva.addEventListener("change", markFiltersDirty);
+elPri.addEventListener("change", markFiltersDirty);
+elSec.addEventListener("change", markFiltersDirty);
+
+elSearch.addEventListener("input", applySearchAndRender);
+
+btnViewEdit.addEventListener("click", () => {
+  if (selectedRow) openModalForRow(selectedRow);
 });
 
-btnPreview.addEventListener("click", openPreview);
+btnPreview.addEventListener("click", () => openReportWindow(false));
+btnPrint.addEventListener("click", () => openReportWindow(true));
 
-btnNew.addEventListener("click", () => {
-  resetAllFields();
-  serialInput.value = "";
-  serialInput.focus();
-});
-
-btnClose.addEventListener("click", () => {
+btnQuit.addEventListener("click", () => {
   window.location.href = "./index.html";
+});
+
+modalClose.addEventListener("click", closeModal);
+modal.addEventListener("click", (e) => {
+  if (e.target === modal) closeModal();
 });
 
 if (btnHelp) btnHelp.addEventListener("click", showHelp);
 
 init();
+
