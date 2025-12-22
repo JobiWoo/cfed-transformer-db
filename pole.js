@@ -1,39 +1,52 @@
 const DATA_URL = "./data/transformers.json";
 
 /* =========================
-   CENTRALIZED FORMAT HELPERS
+   Helpers / formatting
    ========================= */
-
 function safeStr(v) {
   if (v === null || v === undefined) return "";
   return String(v).trim();
 }
-
+function normalizePole(v) {
+  return safeStr(v).toUpperCase().replace(/\s+/g, "");
+}
+function normalizeStatus(v) {
+  return safeStr(v).toUpperCase();
+}
 function toNumberOrNaN(v) {
   if (v === null || v === undefined || v === "") return NaN;
   const n = Number(v);
   return Number.isNaN(n) ? NaN : n;
 }
-
 function fmtFixed(v, decimals) {
   const n = toNumberOrNaN(v);
   if (Number.isNaN(n)) return safeStr(v);
   return n.toFixed(decimals);
 }
 
-const FIELD_RULES = {
-  IMP: { label: "Imp", format: (v) => fmtFixed(v, 2) },
-};
-
-function formatField(key, value) {
-  const rule = FIELD_RULES[key];
-  return rule ? rule.format(value) : safeStr(value);
+/* =========================
+   Status badge helpers
+   ========================= */
+function statusClass(status) {
+  const s = normalizeStatus(status);
+  if (s === "IN STOCK") return "status-green";
+  if (s === "IN SERVICE") return "status-blue";
+  if (s === "ON HOLD") return "status-amber";
+  if (s === "NEEDS TESTED") return "status-orange";
+  if (s === "SCRAPPED") return "status-red";
+  if (s === "NEEDS PAINTED") return "status-orange";
+  if (s === "RECOVERED T.B.T." || s === "NEW T.B.T.") return "status-green";
+  return "status-gray";
+}
+function renderStatusBadge(status) {
+  const text = safeStr(status) || "—";
+  const cls = statusClass(text);
+  return `<span class="status-pill ${cls}">${text}</span>`;
 }
 
 /* =========================
-   ELEMENTS / STATE
+   Elements / State
    ========================= */
-
 let allRows = [];
 let selectedRow = null;
 
@@ -54,48 +67,33 @@ const modalBody = document.getElementById("modal-body");
 const modalSubtitle = document.getElementById("modal-subtitle");
 
 /* =========================
-   HELPERS
+   UI helpers
    ========================= */
-
-function normalizePole(v) {
-  // Normalize for case + spacing, so "m 13929" matches "M13929"
-  return safeStr(v).toUpperCase().replace(/\s+/g, "");
-}
-
 function beep() {
-  // best-effort beep without breaking anything
   try { window.navigator.vibrate?.(80); } catch {}
 }
-
 function setButtonsInitial() {
   btnViewEdit.disabled = true;
   btnPreview.disabled = true;
 }
-
 function clearSelection() {
   selectedRow = null;
   btnViewEdit.disabled = true;
   document.querySelectorAll("tr.selected").forEach(x => x.classList.remove("selected"));
 }
-
 function computeAddress(row) {
   const hse = safeStr(row.HSE_NUM);
   const street = safeStr(row.STREET);
   const both = [hse, street].filter(Boolean).join(" ");
   return both || "—";
 }
-
 function computeFeeder(row) {
-  // prefer FEEDER then Feeder (your JSON has both patterns)
-  const f1 = safeStr(row.FEEDER);
-  const f2 = safeStr(row.Feeder);
-  return f1 || f2 || "—";
+  return safeStr(row.FEEDER) || safeStr(row.Feeder) || "—";
 }
 
 /* =========================
-   GRID
+   Grid
    ========================= */
-
 function renderGrid(rows) {
   tbody.innerHTML = "";
 
@@ -115,13 +113,16 @@ function renderGrid(rows) {
     const sec = safeStr(r.SEC_VOLT);
     const feeder = computeFeeder(r);
 
+    // Status badge shown next to feeder (no extra column needed)
+    const feederCell = `${feeder} <span style="margin-left:8px;">${renderStatusBadge(r.STATUS)}</span>`;
+
     tr.innerHTML = `
       <td title="${address}">${address}</td>
       <td title="${kva}">${kva}</td>
       <td title="${serial}">${serial}</td>
       <td title="${pri}">${pri}</td>
       <td title="${sec}">${sec}</td>
-      <td title="${feeder}">${feeder}</td>
+      <td title="${feeder}">${feederCell}</td>
     `;
 
     tr.addEventListener("click", () => {
@@ -136,9 +137,8 @@ function renderGrid(rows) {
 }
 
 /* =========================
-   SEARCH (POLE)
+   Search (Pole)
    ========================= */
-
 function runPoleSearch() {
   const inputRaw = poleInput.value;
   const poleKey = normalizePole(inputRaw);
@@ -153,13 +153,10 @@ function runPoleSearch() {
     return;
   }
 
-  // IMPORTANT: match against POLE_NO field in JSON
   const matches = allRows.filter(r => normalizePole(r.POLE_NO) === poleKey);
 
   if (!matches.length) {
     beep();
-
-    // Helpful debug info: if there are any poles in the dataset at all
     const poleCount = allRows.filter(r => safeStr(r.POLE_NO) !== "").length;
 
     alert(
@@ -174,31 +171,28 @@ function runPoleSearch() {
     return;
   }
 
-  // Success: enable preview like Access
   btnPreview.disabled = false;
-
   renderGrid(matches);
   elStatus.textContent = `Pole ${inputRaw} • Matches: ${matches.length}`;
 }
 
 /* =========================
-   VIEW/EDIT MODAL
+   View/Edit modal (read-only)
    ========================= */
-
 function openModalForRow(row) {
   if (!row) return;
 
   modalSubtitle.textContent =
-    `Trans_ID: ${safeStr(row.TRANS_ID) || "—"} • Pole: ${safeStr(row.POLE_NO) || "—"}`;
+    `Trans_ID: ${safeStr(row.TRANS_ID) || "—"} • Pole: ${safeStr(row.POLE_NO) || "—"} • Status: ${safeStr(row.STATUS) || "—"}`;
 
   modalBody.innerHTML = `
     <div class="kv">
       ${Object.keys(row).map(k => {
-        const label = k;
-        const val = (k === "IMP") ? formatField("IMP", row[k]) : safeStr(row[k]);
+        let val = safeStr(row[k]);
+        if (k === "IMP") val = fmtFixed(row[k], 2);
         return `
           <div class="field">
-            <div class="label">${label}</div>
+            <div class="label">${k}</div>
             <div class="value">${val || "—"}</div>
           </div>
         `;
@@ -208,15 +202,13 @@ function openModalForRow(row) {
 
   modal.classList.remove("hidden");
 }
-
 function closeModal() {
   modal.classList.add("hidden");
 }
 
 /* =========================
-   PREVIEW REPORT
+   Preview report
    ========================= */
-
 function buildReportHtml(rows, poleLabel) {
   const now = new Date().toLocaleString();
 
@@ -227,6 +219,7 @@ function buildReportHtml(rows, poleLabel) {
     <th>Pri</th>
     <th>Sec</th>
     <th>Feeder</th>
+    <th>Status</th>
   `;
 
   const body = rows.map(r => {
@@ -236,6 +229,7 @@ function buildReportHtml(rows, poleLabel) {
     const pri = safeStr(r.PRI_VOLT);
     const sec = safeStr(r.SEC_VOLT);
     const feeder = computeFeeder(r);
+    const status = renderStatusBadge(r.STATUS);
 
     return `<tr>
       <td>${address}</td>
@@ -244,6 +238,7 @@ function buildReportHtml(rows, poleLabel) {
       <td>${pri}</td>
       <td>${sec}</td>
       <td>${feeder}</td>
+      <td>${status}</td>
     </tr>`;
   }).join("");
 
@@ -258,9 +253,23 @@ function buildReportHtml(rows, poleLabel) {
     h1{ font-size:20px; margin:0 0 6px 0; font-weight:900; }
     .meta{ font-size:12px; color:#6b7280; margin-bottom:12px; }
     table{ width:100%; border-collapse:collapse; }
-    th{ background:#0b3a78; color:#fff; text-align:left; font-size:12px; padding:8px; }
+    th{ background:#0b3a78; color:#fff; text-align:left; font-size:12px; padding:8px; position:sticky; top:0; }
     td{ padding:7px 8px; border-bottom:1px solid #e5e7eb; font-size:12px; white-space:nowrap; }
-    @media print{ body{ margin:10mm; } }
+
+    .status-pill{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:6px 10px; border-radius:999px;
+      font-weight:900; font-size:12px; letter-spacing:.02em;
+      border:1px solid #d8e0ea; background:#f7f9fc; color:#1f2937;
+    }
+    .status-green{ background:#e8f7ee; border-color:#bfe7cd; color:#0f5132; }
+    .status-blue{  background:#e8f1ff; border-color:#c9dcff; color:#0b3a78; }
+    .status-amber{ background:#fff4d6; border-color:#ffe1a6; color:#7a4a00; }
+    .status-orange{background:#ffedd5; border-color:#ffd6a1; color:#7a2f00; }
+    .status-red{   background:#fde8e8; border-color:#f5bebe; color:#7a1111; }
+    .status-gray{  background:#f1f5f9; border-color:#d5dde7; color:#334155; }
+
+    @media print{ body{ margin:10mm; } th{ position:static; } }
   </style>
 </head>
 <body>
@@ -279,10 +288,9 @@ function openPreview() {
 
   const poleLabel = safeStr(poleInput.value) || "—";
   const poleKey = normalizePole(poleInput.value);
-
   const rows = allRows.filter(r => normalizePole(r.POLE_NO) === poleKey);
-  const html = buildReportHtml(rows, poleLabel);
 
+  const html = buildReportHtml(rows, poleLabel);
   const w = window.open("", "_blank");
   if (!w) {
     alert("Popup blocked. Please allow popups.");
@@ -294,19 +302,17 @@ function openPreview() {
 }
 
 /* =========================
-   HELP / INIT / EVENTS
+   Help / init / events
    ========================= */
-
 function showHelp() {
   alert(
 `Transformers By Pole Number
 
-1) Enter a Pole Number (ex: M13929, CF1586)
-2) Click Search (or press Enter)
-3) If matches exist, Preview is enabled
-4) Click a row to enable View/Edit (read-only)
+• Enter a pole number and click Search (or press Enter)
+• Status is shown as a color badge next to the feeder
+• Preview includes Status as well
 
-This page is read-only for now.`
+Read-only for now; later will save to SQL Server.`
   );
 }
 
