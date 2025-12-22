@@ -1,19 +1,13 @@
 const DATA_URL = "./data/transformers.json";
 
-// --- Status defaults / ordering (foreman-friendly) ---
-const DEFAULT_STATUS = "IN STOCK";
-const STATUS_ORDER = [
-  "RECOVERED T.B.T.",
-  "SCRAPPED",
-  "IN SERVICE",
+// Inventory statuses that should appear on this page (foreman/linemen view)
+const INVENTORY_STATUSES = [
   "IN STOCK",
-  "UNKNOWN",
-  "TO BE SCRAPPED",
   "NEW T.B.T.",
+  "RECOVERED T.B.T.",
   "NEEDS TESTED",
   "ON HOLD",
-  "NEEDS PAINTED",
-  "TO BE REFURBISHED"
+  "NEEDS PAINTED"
 ];
 
 // State
@@ -27,7 +21,6 @@ const elType = document.getElementById("filter-type");
 const elKva = document.getElementById("filter-kva");
 const elPri = document.getElementById("filter-pri");
 const elSec = document.getElementById("filter-sec");
-const elStatusFilter = document.getElementById("filter-status");
 
 const btnApply = document.getElementById("btn-apply");
 const btnViewEdit = document.getElementById("btn-viewedit");
@@ -60,29 +53,22 @@ function normalizeStatus(s) {
   return safeStr(s).toUpperCase();
 }
 
-function populateSelect(selectEl, values, allLabel, preferredOrder = null) {
-  const present = uniqSorted(values);
-
-  let opts = present;
-  if (preferredOrder && Array.isArray(preferredOrder)) {
-    const presentSet = new Set(present.map(v => normalizeStatus(v)));
-    const preferredUpper = preferredOrder.map(v => normalizeStatus(v));
-
-    const ordered = preferredOrder.filter(v => presentSet.has(normalizeStatus(v)));
-    const leftovers = present.filter(v => !preferredUpper.includes(normalizeStatus(v)));
-
-    opts = [...ordered, ...leftovers];
-  }
-
-  selectEl.innerHTML =
-    `<option value="">${allLabel}</option>` +
-    opts.map(v => `<option value="${v}">${v}</option>`).join("");
-}
-
 function setButtonsState() {
   btnPreview.disabled = !filtersApplied;
   btnPrint.disabled = !filtersApplied;
   btnViewEdit.disabled = !(filtersApplied && selectedRow);
+}
+
+function isInventoryStatus(row) {
+  const s = normalizeStatus(row.STATUS);
+  return INVENTORY_STATUSES.map(normalizeStatus).includes(s);
+}
+
+function populateSelect(selectEl, values, allLabel) {
+  const opts = uniqSorted(values);
+  selectEl.innerHTML =
+    `<option value="">${allLabel}</option>` +
+    opts.map(v => `<option value="${v}">${v}</option>`).join("");
 }
 
 // ---------- Filtering ----------
@@ -91,14 +77,16 @@ function applyFilters() {
   const kvaVal = elKva.value;
   const priVal = elPri.value;
   const secVal = elSec.value;
-  const statusVal = elStatusFilter.value;
 
-  filteredRows = allRows.filter(r => {
+  // First: enforce inventory-only
+  const inventoryRows = allRows.filter(isInventoryStatus);
+
+  // Second: apply user filters (Type/KVA/PRI/SEC)
+  filteredRows = inventoryRows.filter(r => {
     if (typeVal && safeStr(r.TYPE) !== typeVal) return false;
-    if (kvaVal && safeStr(r.KVA) !== kvaVal) return false;          // KVA can be numeric or string; safeStr handles both
+    if (kvaVal && safeStr(r.KVA) !== kvaVal) return false;
     if (priVal && safeStr(r.PRI_VOLT) !== priVal) return false;
     if (secVal && safeStr(r.SEC_VOLT) !== secVal) return false;
-    if (statusVal && safeStr(r.STATUS) !== statusVal) return false;
     return true;
   });
 
@@ -118,7 +106,7 @@ function applySearchAndRender() {
       );
 
   renderGrid(rows);
-  elStatus.textContent = `Loaded ${allRows.length} • Showing ${rows.length}`;
+  elStatus.textContent = `Inventory records ${rows.length} (of ${allRows.length} total transformers)`;
 }
 
 // ---------- Grid (on-screen list) ----------
@@ -127,7 +115,7 @@ function renderGrid(rows) {
 
   if (!rows.length) {
     tbody.innerHTML =
-      `<tr><td colspan="5" style="padding:14px;color:#5b677a;">No records found.</td></tr>`;
+      `<tr><td colspan="5" style="padding:14px;color:#5b677a;">No inventory records found.</td></tr>`;
     return;
   }
 
@@ -154,7 +142,7 @@ function renderGrid(rows) {
 
 // ---------- Modal ----------
 function openModalForRow(row) {
-  modalSubtitle.textContent = `Trans_ID: ${safeStr(row.TRANS_ID) || "—"}`;
+  modalSubtitle.textContent = `Trans_ID: ${safeStr(row.TRANS_ID) || "—"} • Status: ${safeStr(row.STATUS) || "—"}`;
 
   modalBody.innerHTML = `
     <div class="kv">
@@ -175,7 +163,6 @@ function closeModal() {
 }
 
 // ---------- Report (Preview / Print) ----------
-// We will show ONLY these columns, in this order:
 const REPORT_COLUMNS = [
   { key: "MFG",     label: "Manufacturer" },
   { key: "SERIAL",  label: "Serial Number" },
@@ -189,7 +176,6 @@ function buildReportHtml(rows, title) {
   const now = new Date().toLocaleString();
 
   const head = REPORT_COLUMNS.map(c => `<th>${c.label}</th>`).join("");
-
   const body = rows.map(r => {
     const tds = REPORT_COLUMNS.map(c => `<td>${safeStr(r[c.key])}</td>`).join("");
     return `<tr>${tds}</tr>`;
@@ -216,7 +202,6 @@ function buildReportHtml(rows, title) {
       font-size:12px;
       vertical-align:top;
     }
-    /* Make Remarks readable */
     td:last-child{
       white-space:normal;
       max-width:520px;
@@ -230,7 +215,7 @@ function buildReportHtml(rows, title) {
 </head>
 <body>
   <h1>${title}</h1>
-  <div class="meta">Generated: ${now} • Records: ${rows.length}</div>
+  <div class="meta">Generated: ${now} • Inventory Records: ${rows.length}</div>
   <table>
     <thead><tr>${head}</tr></thead>
     <tbody>${body}</tbody>
@@ -242,7 +227,6 @@ function buildReportHtml(rows, title) {
 function openReportWindow(doPrint) {
   if (!filtersApplied) return;
 
-  // Use current filtered rows + current search text
   const q = safeStr(elSearch.value).toLowerCase();
   const rows = (!q)
     ? filteredRows
@@ -267,18 +251,17 @@ function openReportWindow(doPrint) {
 // ---------- Help ----------
 function showHelp() {
   alert(
-`Transformer Inventory Listing
+`Transformer Inventory Listing (Inventory Only)
 
-Default view: ${DEFAULT_STATUS}
+This page automatically shows ONLY inventory statuses:
+${INVENTORY_STATUSES.join(", ")}
 
-• Change filters, then click Search
-• Click a row to View/Edit
-• Preview / Print generate a report of the current filtered list
-
-Report columns:
-Manufacturer, Serial Number, Imp, Location, Status, Remarks
-
-(Read-only demo)`
+How to use:
+1) Use Type/KVA/Primary/Secondary filters if needed
+2) Click Search to apply filters
+3) Search box filters within the current results
+4) Click a row to View/Edit (read-only)
+5) Preview/Print generate a report of the current filtered inventory list`
   );
 }
 
@@ -289,30 +272,20 @@ async function init() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     allRows = await res.json();
 
-    // Populate dropdowns
-    populateSelect(elType, allRows.map(r => safeStr(r.TYPE)), "All Types");
-    populateSelect(elKva, allRows.map(r => safeStr(r.KVA)), "All KVA");
-    populateSelect(elPri, allRows.map(r => safeStr(r.PRI_VOLT)), "All Primary");
-    populateSelect(elSec, allRows.map(r => safeStr(r.SEC_VOLT)), "All Secondary");
+    // Build dropdown options ONLY from inventory rows (so filters reflect what crews can actually pick from)
+    const inv = allRows.filter(isInventoryStatus);
 
-    populateSelect(
-      elStatusFilter,
-      allRows.map(r => safeStr(r.STATUS)),
-      "All Status",
-      STATUS_ORDER
-    );
+    populateSelect(elType, inv.map(r => safeStr(r.TYPE)), "All Types");
+    populateSelect(elKva,  inv.map(r => safeStr(r.KVA)),  "All KVA");
+    populateSelect(elPri,  inv.map(r => safeStr(r.PRI_VOLT)), "All Primary");
+    populateSelect(elSec,  inv.map(r => safeStr(r.SEC_VOLT)), "All Secondary");
 
-    // Default to IN STOCK if present
-    const optionValues = Array.from(elStatusFilter.options).map(o => o.value);
-    const exact = optionValues.find(v => normalizeStatus(v) === normalizeStatus(DEFAULT_STATUS));
-    if (exact) elStatusFilter.value = exact;
-
-    // Initial state like Access
+    // Access-like initial state: buttons disabled until Search
     filtersApplied = false;
     selectedRow = null;
     setButtonsState();
 
-    // Focus first filter + auto-apply default
+    // Focus + auto-run once so page loads with inventory immediately
     elType.focus();
     applyFilters();
 
@@ -335,7 +308,6 @@ elType.addEventListener("change", markFiltersDirty);
 elKva.addEventListener("change", markFiltersDirty);
 elPri.addEventListener("change", markFiltersDirty);
 elSec.addEventListener("change", markFiltersDirty);
-elStatusFilter.addEventListener("change", markFiltersDirty);
 
 elSearch.addEventListener("input", applySearchAndRender);
 
