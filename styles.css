@@ -2,8 +2,8 @@
   /* City-ish palette (clean whites + strong blues) */
   --blue:#0b3a78;
   --blue2:#0a2f60;
-  --accent:#1d9bf0;      /* light blue accent */
-  --bg:#eef2f6;          /* soft gray-blue background */
+  --accent:#1d9bf0;
+  --bg:#eef2f6;
   --panel:#ffffff;
   --line:#d8e0ea;
   --text:#0b1220;
@@ -25,8 +25,7 @@ body{
   background:var(--bg);
 }
 
-/* ---------- City-style header ---------- */
-
+/* ---------- Header ---------- */
 .site-header{
   background:var(--panel);
   border-bottom:1px solid var(--line);
@@ -66,16 +65,13 @@ body{
   border:0;
   background:transparent;
   color:var(--blue);
-  font-weight:700;
+  font-weight:800;
   cursor:pointer;
   padding:8px 10px;
   border-radius:10px;
 }
-.link-btn:hover{
-  background:#f2f6ff;
-}
+.link-btn:hover{ background:#f2f6ff; }
 
-/* App header block (title + filters) */
 .app-header{
   background:linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
   border-top:1px solid var(--line);
@@ -119,6 +115,7 @@ body{
   gap:10px;
 }
 
+/* NOTE: inventory version uses 5 columns (label + 2 selects + 2 spacers or button) */
 .filter-row{
   display:grid;
   grid-template-columns: 260px 1fr 1fr 1fr auto;
@@ -128,7 +125,7 @@ body{
 
 .filter-label{
   font-size:13px;
-  font-weight:800;
+  font-weight:900;
   color:var(--blue2);
   letter-spacing:.2px;
 }
@@ -148,7 +145,6 @@ body{
 }
 
 /* ---------- Main layout ---------- */
-
 .layout{
   max-width:1200px;
   margin:14px auto;
@@ -248,7 +244,6 @@ body{
 }
 
 /* ---------- Button bar ---------- */
-
 .button-bar{
   background:var(--panel);
   border:1px solid var(--line);
@@ -266,7 +261,7 @@ body{
   background:var(--panel);
   padding:12px 12px;
   font-size:14px;
-  font-weight:800;
+  font-weight:900;
   cursor:pointer;
   display:flex;
   align-items:center;
@@ -274,9 +269,7 @@ body{
   justify-content:flex-start;
 }
 
-.btn:hover{
-  background:#f6f9ff;
-}
+.btn:hover{ background:#f6f9ff; }
 
 .btn:disabled{
   opacity:.55;
@@ -289,9 +282,7 @@ body{
   border-color:#083166;
   box-shadow: 0 2px 0 rgba(0,0,0,.10);
 }
-.btn-primary:hover{
-  background:#0a2f60;
-}
+.btn-primary:hover{ background:#0a2f60; }
 
 .btn-icon .icon{
   width:28px;
@@ -311,7 +302,6 @@ body{
 }
 
 /* ---------- Modal ---------- */
-
 .modal{
   position:fixed;
   inset:0;
@@ -400,16 +390,8 @@ body{
 
 /* ---------- Responsive ---------- */
 @media (max-width: 980px){
-  .filter-row{
-    grid-template-columns: 1fr;
-  }
-  .layout{
-    grid-template-columns: 1fr;
-  }
-  .grid{
-    min-width:760px;
-  }
-  .kv{
-    grid-template-columns: 1fr;
-  }
+  .filter-row{ grid-template-columns: 1fr; }
+  .layout{ grid-template-columns: 1fr; }
+  .grid{ min-width:760px; }
+  .kv{ grid-template-columns: 1fr; }
 }
