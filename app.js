@@ -34,7 +34,6 @@ const btnViewEdit = document.getElementById("btn-viewedit");
 const btnPreview = document.getElementById("btn-preview");
 const btnPrint = document.getElementById("btn-print");
 const btnQuit = document.getElementById("btn-quit");
-
 const btnHelp = document.getElementById("btn-help");
 
 const elSearch = document.getElementById("search");
@@ -46,38 +45,18 @@ const modalClose = document.getElementById("modal-close");
 const modalBody = document.getElementById("modal-body");
 const modalSubtitle = document.getElementById("modal-subtitle");
 
-// ---------- Helpers (field name flexibility) ----------
+// ---------- Helpers ----------
 function safeStr(v) {
   if (v === null || v === undefined) return "";
   return String(v).trim();
 }
 
-function getField(row, candidates) {
-  for (const key of candidates) {
-    if (row && Object.prototype.hasOwnProperty.call(row, key)) {
-      const val = safeStr(row[key]);
-      if (val !== "") return val;
-    }
-  }
-  // Try case-insensitive match
-  const keys = Object.keys(row || {});
-  for (const cand of candidates) {
-    const found = keys.find(k => k.toLowerCase() === cand.toLowerCase());
-    if (found) {
-      const val = safeStr(row[found]);
-      if (val !== "") return val;
-    }
-  }
-  return "";
-}
-
 function uniqSorted(values) {
   return Array.from(new Set(values.filter(v => safeStr(v) !== "")))
-    .sort((a, b) => safeStr(a).localeCompare(safeStr(b), undefined, { numeric: true }));
+    .sort((a, b) => safeStr(a).localeCompare(safeStr(b)));
 }
 
 function normalizeStatus(s) {
-  // Make comparisons resilient to case/spacing drift in source data
   return safeStr(s).toUpperCase();
 }
 
@@ -87,29 +66,23 @@ function populateSelect(selectEl, values, allLabel, preferredOrder = null) {
   let opts = present;
   if (preferredOrder && Array.isArray(preferredOrder)) {
     const presentSet = new Set(present.map(v => normalizeStatus(v)));
-    const preferredUpper = preferredOrder.map(v => normalizeStatus(v));
-
     const ordered = preferredOrder.filter(v => presentSet.has(normalizeStatus(v)));
-    const leftovers = present.filter(v => !preferredUpper.includes(normalizeStatus(v)));
-
+    const leftovers = present.filter(v => !ordered.includes(v));
     opts = [...ordered, ...leftovers];
   }
 
   selectEl.innerHTML =
     `<option value="">${allLabel}</option>` +
-    opts.map(v => `<option value="${String(v)}">${String(v)}</option>`).join("");
+    opts.map(v => `<option value="${v}">${v}</option>`).join("");
 }
 
 function setButtonsState() {
-  // Preview/Print enabled once filters applied (mimics Access behavior)
   btnPreview.disabled = !filtersApplied;
   btnPrint.disabled = !filtersApplied;
-
-  // View/Edit enabled only when filters applied AND a row is selected
   btnViewEdit.disabled = !(filtersApplied && selectedRow);
 }
 
-// ---------- Filtering logic ----------
+// ---------- Filtering ----------
 function applyFilters() {
   const typeVal = elType.value;
   const kvaVal = elKva.value;
@@ -118,27 +91,17 @@ function applyFilters() {
   const statusVal = elStatusFilter.value;
 
   filteredRows = allRows.filter(r => {
-    const TYPE = getField(r, ["TYPE", "TRANSFORMER_TYPE", "TYPE_NAME", "TYPE_DESC", "TYPE_ID"]);
-    const KVA = getField(r, ["KVA", "KVA_RATING", "KVA_SIZE", "KVA_ID"]);
-    const PRI = getField(r, ["PRI_VOLT", "PRI_VOLTAGE", "PRIMARY_VOLT", "PRI_ID"]);
-    const SEC = getField(r, ["SEC_VOLT", "SEC_VOLTAGE", "SECONDARY_VOLT", "SEC_ID"]);
-    const STATUS = getField(r, ["STATUS", "STATUS_NAME", "STATUS_ID"]);
-
-    if (typeVal && TYPE !== typeVal) return false;
-    if (kvaVal && KVA !== kvaVal) return false;
-    if (priVal && PRI !== priVal) return false;
-    if (secVal && SEC !== secVal) return false;
-    if (statusVal && STATUS !== statusVal) return false;
-
+    if (typeVal && safeStr(r.TYPE) !== typeVal) return false;
+    if (kvaVal && String(r.KVA) !== kvaVal) return false;
+    if (priVal && safeStr(r.PRI_VOLT) !== priVal) return false;
+    if (secVal && safeStr(r.SEC_VOLT) !== secVal) return false;
+    if (statusVal && safeStr(r.STATUS) !== statusVal) return false;
     return true;
   });
 
-  // After applying filters, enable report actions; selection resets
   filtersApplied = true;
   selectedRow = null;
   setButtonsState();
-
-  // Apply search within the current filtered set
   applySearchAndRender();
 }
 
@@ -147,44 +110,37 @@ function applySearchAndRender() {
 
   const rows = (!q)
     ? filteredRows
-    : filteredRows.filter(r => {
-        const hay = Object.values(r).map(safeStr).join(" ").toLowerCase();
-        return hay.includes(q);
-      });
+    : filteredRows.filter(r =>
+        Object.values(r).map(safeStr).join(" ").toLowerCase().includes(q)
+      );
 
   renderGrid(rows);
   elStatus.textContent = `Loaded ${allRows.length} • Showing ${rows.length}`;
 }
 
+// ---------- Grid ----------
 function renderGrid(rows) {
   tbody.innerHTML = "";
-  if (!rows || rows.length === 0) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="5" style="color:#5b677a;padding:14px;">No records found.</td>`;
-    tbody.appendChild(tr);
+
+  if (!rows.length) {
+    tbody.innerHTML =
+      `<tr><td colspan="5" style="padding:14px;color:#5b677a;">No records found.</td></tr>`;
     return;
   }
 
-  rows.forEach((r) => {
-    const mfg = getField(r, ["MFG", "MANUFACTURER", "MFG_NAME"]);
-    const serial = getField(r, ["SERIAL", "SERIAL_NO", "SERIAL_NUMBER"]);
-    const imp = getField(r, ["IMP", "IMPEDANCE", "Z_PERCENT"]);
-    const status = getField(r, ["STATUS", "STATUS_NAME"]);
-    const location = getField(r, ["LOCATION", "LOCATION_NAME", "LOC_DESC"]);
-
+  rows.forEach(r => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td title="${mfg}">${mfg}</td>
-      <td title="${serial}">${serial}</td>
-      <td title="${imp}">${imp}</td>
-      <td title="${status}">${status}</td>
-      <td title="${location}">${location}</td>
+      <td>${safeStr(r.MFG)}</td>
+      <td>${safeStr(r.SERIAL)}</td>
+      <td>${safeStr(r.IMP)}</td>
+      <td>${safeStr(r.STATUS)}</td>
+      <td>${safeStr(r.LOCATION)}</td>
     `;
 
     tr.addEventListener("click", () => {
       document.querySelectorAll("tr.selected").forEach(x => x.classList.remove("selected"));
       tr.classList.add("selected");
-
       selectedRow = r;
       setButtonsState();
     });
@@ -193,18 +149,13 @@ function renderGrid(rows) {
   });
 }
 
-// ---------- View/Edit modal ----------
+// ---------- Modal ----------
 function openModalForRow(row) {
-  if (!row) return;
+  modalSubtitle.textContent = `Trans_ID: ${row.TRANS_ID || "—"}`;
 
-  const transId = getField(row, ["TRANS_ID", "Trans_ID", "TRANSFORMER_ID", "ID"]);
-  const pole = getField(row, ["POLE_NO", "POLE", "SUPPORT_STRUCTURE_ID"]);
-  modalSubtitle.textContent = `Trans_ID: ${transId || "—"} • Pole: ${pole || "—"}`;
-
-  const keys = Object.keys(row);
   modalBody.innerHTML = `
     <div class="kv">
-      ${keys.map(k => `
+      ${Object.keys(row).map(k => `
         <div class="field">
           <div class="label">${k}</div>
           <div class="value">${safeStr(row[k]) || "—"}</div>
@@ -214,201 +165,126 @@ function openModalForRow(row) {
   `;
 
   modal.classList.remove("hidden");
-  modal.setAttribute("aria-hidden", "false");
 }
 
 function closeModal() {
   modal.classList.add("hidden");
-  modal.setAttribute("aria-hidden", "true");
 }
 
-// ---------- Report Preview / Print ----------
-function buildReportHtml(rows, title) {
+// ---------- Reports ----------
+function openReportWindow(doPrint) {
+  if (!filtersApplied) return;
+
+  const rows = filteredRows;
   const now = new Date().toLocaleString();
 
-  const colsPreferred = [
-    ["TRANS_ID", ["TRANS_ID", "Trans_ID", "ID"]],
-    ["TYPE", ["TYPE", "TRANSFORMER_TYPE", "TYPE_ID"]],
-    ["KVA", ["KVA", "KVA_ID"]],
-    ["PRI_VOLT", ["PRI_VOLT", "PRI_ID"]],
-    ["SEC_VOLT", ["SEC_VOLT", "SEC_ID"]],
-    ["FEEDER", ["FEEDER", "FEEDER_ID"]],
-    ["STATUS", ["STATUS", "STATUS_ID"]],
-    ["LOCATION", ["LOCATION", "LOCATION_ID"]],
-    ["MFG", ["MFG", "MANUFACTURER", "MFG_ID"]],
-    ["SERIAL", ["SERIAL", "SERIAL_NO"]],
-    ["IMP", ["IMP", "IMPEDANCE"]],
-    ["STREET", ["STREET", "STREET_ID"]],
-    ["POLE_NO", ["POLE_NO", "POLE"]],
-  ];
-
-  const cols = colsPreferred.filter(([_, cands]) =>
-    rows.some(r => safeStr(getField(r, cands)) !== "")
-  );
-
-  const head = cols.map(([label]) => `<th>${label}</th>`).join("");
-  const body = rows.map(r => {
-    const tds = cols.map(([, cands]) => `<td>${safeStr(getField(r, cands))}</td>`).join("");
-    return `<tr>${tds}</tr>`;
-  }).join("");
-
-  return `
+  const html = `
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>${title}</title>
+  <title>Transformer Inventory Listing</title>
   <style>
-    body{ font-family: Cabin, Segoe UI, Tahoma, Arial, sans-serif; margin:18px; color:#111827; }
-    h1{ margin:0 0 6px 0; font-size:20px; font-weight:900; }
-    .meta{ color:#6b7280; font-size:12px; margin-bottom:12px; }
+    body{ font-family: Cabin, Segoe UI, Arial; margin:18px; }
+    h1{ font-size:20px; margin-bottom:6px; }
+    .meta{ font-size:12px; color:#666; margin-bottom:12px; }
     table{ width:100%; border-collapse:collapse; }
-    th{ background:#0b3a78; color:#fff; text-align:left; font-size:12px; padding:8px; position:sticky; top:0; }
-    td{ border-bottom:1px solid #e5e7eb; padding:7px 8px; font-size:12px; white-space:nowrap; }
-    @media print{
-      body{ margin:10mm; }
-      th{ position:static; }
-    }
+    th{ background:#0b3a78; color:#fff; padding:8px; font-size:12px; }
+    td{ padding:7px 8px; border-bottom:1px solid #ddd; font-size:12px; }
   </style>
 </head>
 <body>
-  <h1>${title}</h1>
-  <div class="meta">Generated: ${now} • Records: ${rows.length}</div>
+  <h1>Transformer Inventory Listing</h1>
+  <div class="meta">Generated ${now} • Records ${rows.length}</div>
   <table>
-    <thead><tr>${head}</tr></thead>
-    <tbody>${body}</tbody>
+    <thead>
+      <tr>
+        <th>ID</th><th>Type</th><th>KVA</th><th>Status</th><th>Location</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.map(r => `
+        <tr>
+          <td>${r.TRANS_ID}</td>
+          <td>${safeStr(r.TYPE)}</td>
+          <td>${safeStr(r.KVA)}</td>
+          <td>${safeStr(r.STATUS)}</td>
+          <td>${safeStr(r.LOCATION)}</td>
+        </tr>
+      `).join("")}
+    </tbody>
   </table>
 </body>
 </html>`;
-}
-
-function openReportWindow(doPrint) {
-  if (!filtersApplied) return;
-
-  const q = safeStr(elSearch.value).toLowerCase();
-  const rows = (!q)
-    ? filteredRows
-    : filteredRows.filter(r => Object.values(r).map(safeStr).join(" ").toLowerCase().includes(q));
-
-  const html = buildReportHtml(rows, "Transformer Inventory Listing");
 
   const w = window.open("", "_blank");
-  if (!w) {
-    alert("Popup blocked. Please allow popups for Preview/Print.");
-    return;
-  }
-  w.document.open();
   w.document.write(html);
   w.document.close();
 
-  if (doPrint) {
-    w.focus();
-    setTimeout(() => w.print(), 250);
-  }
-}
-
-// ---------- Access-like enable/disable cues ----------
-function markFiltersDirty() {
-  filtersApplied = false;
-  selectedRow = null;
-  setButtonsState();
-  document.querySelectorAll("tr.selected").forEach(x => x.classList.remove("selected"));
+  if (doPrint) setTimeout(() => w.print(), 250);
 }
 
 // ---------- Help ----------
 function showHelp() {
   alert(
-`Transformer Inventory Listing (Demo)
+`Transformer Inventory Listing
 
-Default: Status = ${DEFAULT_STATUS}
+Default view: ${DEFAULT_STATUS}
 
-How to use:
-1) Choose filters (Type/KVA, Primary, Secondary, Status)
-2) Click Search to apply filters
-3) Click a row to select a transformer
-4) View/Edit shows details (read-only)
-5) Preview/Print generates a report of the current filtered list
+• Change filters, then click Search
+• Click a row to View/Edit
+• Preview / Print generate reports
 
-Note: This GitHub Pages demo is static and does not save edits yet.`
+(Read-only demo)`
   );
 }
 
 // ---------- Init ----------
 async function init() {
-  try {
-    const res = await fetch(DATA_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    allRows = await res.json();
+  const res = await fetch(DATA_URL, { cache: "no-store" });
+  allRows = await res.json();
 
-    populateSelect(elType, allRows.map(r => getField(r, ["TYPE", "TRANSFORMER_TYPE", "TYPE_ID"])), "All Types");
-    populateSelect(elKva, allRows.map(r => getField(r, ["KVA", "KVA_ID"])), "All KVA");
-    populateSelect(elPri, allRows.map(r => getField(r, ["PRI_VOLT", "PRI_VOLTAGE", "PRI_ID"])), "All Primary");
-    populateSelect(elSec, allRows.map(r => getField(r, ["SEC_VOLT", "SEC_VOLTAGE", "SEC_ID"])), "All Secondary");
+  populateSelect(elType, allRows.map(r => r.TYPE), "All Types");
+  populateSelect(elKva, allRows.map(r => String(r.KVA)), "All KVA");
+  populateSelect(elPri, allRows.map(r => r.PRI_VOLT), "All Primary");
+  populateSelect(elSec, allRows.map(r => r.SEC_VOLT), "All Secondary");
 
-    populateSelect(
-      elStatusFilter,
-      allRows.map(r => getField(r, ["STATUS", "STATUS_NAME", "STATUS_ID"])),
-      "All Status",
-      STATUS_ORDER
-    );
+  populateSelect(
+    elStatusFilter,
+    allRows.map(r => r.STATUS),
+    "All Status",
+    STATUS_ORDER
+  );
 
-    // Default foreman view: IN STOCK
-    // Only set it if present; otherwise leave as All Status
-    const presentStatuses = new Set(allRows.map(r => normalizeStatus(getField(r, ["STATUS", "STATUS_NAME", "STATUS_ID"]))));
-    if (presentStatuses.has(normalizeStatus(DEFAULT_STATUS))) {
-      // Find the exact-case option value in dropdown if casing differs
-      const options = Array.from(elStatusFilter.options).map(o => o.value);
-      const exact = options.find(v => normalizeStatus(v) === normalizeStatus(DEFAULT_STATUS));
-      elStatusFilter.value = exact || DEFAULT_STATUS;
-    }
+  // Default to IN STOCK
+  const exact = Array.from(elStatusFilter.options)
+    .map(o => o.value)
+    .find(v => normalizeStatus(v) === normalizeStatus(DEFAULT_STATUS));
 
-    // Base state before applying: disable buttons like Access
-    filteredRows = allRows.slice();
-    filtersApplied = false;
-    selectedRow = null;
-    setButtonsState();
+  if (exact) elStatusFilter.value = exact;
 
-    // Focus first filter like Access Form_Open
-    elType.focus();
+  filtersApplied = false;
+  selectedRow = null;
+  setButtonsState();
 
-    // Auto-apply default (IN STOCK) immediately
-    applyFilters();
-
-  } catch (err) {
-    elStatus.textContent = `Failed to load data: ${err.message}`;
-  }
+  elType.focus();
+  applyFilters();
 }
 
 // ---------- Events ----------
 btnApply.addEventListener("click", applyFilters);
+elType.addEventListener("change", () => filtersApplied = false);
+elKva.addEventListener("change", () => filtersApplied = false);
+elPri.addEventListener("change", () => filtersApplied = false);
+elSec.addEventListener("change", () => filtersApplied = false);
+elStatusFilter.addEventListener("change", () => filtersApplied = false);
 
-elType.addEventListener("change", markFiltersDirty);
-elKva.addEventListener("change", markFiltersDirty);
-elPri.addEventListener("change", markFiltersDirty);
-elSec.addEventListener("change", markFiltersDirty);
-elStatusFilter.addEventListener("change", markFiltersDirty);
-
-elSearch.addEventListener("input", () => {
-  applySearchAndRender();
-});
-
-btnViewEdit.addEventListener("click", () => {
-  if (!filtersApplied || !selectedRow) return;
-  openModalForRow(selectedRow);
-});
-
+elSearch.addEventListener("input", applySearchAndRender);
+btnViewEdit.addEventListener("click", () => selectedRow && openModalForRow(selectedRow));
 btnPreview.addEventListener("click", () => openReportWindow(false));
 btnPrint.addEventListener("click", () => openReportWindow(true));
-
-btnQuit.addEventListener("click", () => {
-  if (confirm("Quit this form?")) window.location.reload();
-});
-
-modalClose.addEventListener("click", closeModal);
-modal.addEventListener("click", (e) => {
-  if (e.target === modal) closeModal();
-});
-
+btnQuit.addEventListener("click", () => location.reload());
 if (btnHelp) btnHelp.addEventListener("click", showHelp);
+modalClose.addEventListener("click", closeModal);
 
 init();
