@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Transformer Inventory Listing</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ACCESS-LIKE FORM HEADER -->
+  <header class="form-header">
+    <div class="title-block">
+      <div class="form-title">Transformer Inventory Listing</div>
+    </div>
+
+    <div class="filters">
+      <div class="filter-row">
+        <label class="filter-label">Select Transformer Type &amp; KVA</label>
+        <select id="filter-type" class="select">
+          <option value="">(All Types)</option>
+        </select>
+        <select id="filter-kva" class="select">
+          <option value="">(All KVA)</option>
+        </select>
+      </div>
+
+      <div class="filter-row">
+        <label class="filter-label">Select Primary &amp; Secondary Voltage</label>
+        <select id="filter-pri" class="select">
+          <option value="">(All Primary)</option>
+        </select>
+        <select id="filter-sec" class="select">
+          <option value="">(All Secondary)</option>
+        </select>
+
+        <button id="btn-apply" class="btn btn-primary">Search</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN LAYOUT: GRID + RIGHT BUTTON BAR -->
+  <main class="layout">
+    <section class="grid-panel">
+      <div class="grid-toolbar">
+        <input id="search" class="search" type="search" placeholder="Search in list…" />
+        <div id="status" class="status">Loading…</div>
+      </div>
+
+      <div class="grid-wrap">
+        <table class="grid" id="grid">
+          <thead>
+            <tr>
+              <th>Manufacturer</th>
+              <th>Serial</th>
+              <th>Imp</th>
+              <th>Status</th>
+              <th>Location</th>
+            </tr>
+          </thead>
+          <tbody id="grid-body">
+            <!-- rows inserted by app.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="hint">Click a row to select a transformer.</div>
+    </section>
+
+    <aside class="button-bar">
+      <button id="btn-viewedit" class="btn btn-icon" disabled>
+        <span class="icon">✎</span>
+        <span>View/Edit</span>
+      </button>
+
+      <button id="btn-preview" class="btn btn-icon" disabled>
+        <span class="icon">🔍</span>
+        <span>Preview</span>
+      </button>
+
+      <button id="btn-print" class="btn btn-icon" disabled>
+        <span class="icon">🖨️</span>
+        <span>Print</span>
+      </button>
+
+      <button id="btn-quit" class="btn btn-icon">
+        <span class="icon">⏻</span>
+        <span>Quit</span>
+      </button>
+    </aside>
+  </main>
+
+  <!-- VIEW/EDIT MODAL (mimics opening "View/Edit Transformer" form) -->
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">View/Edit Transformer</div>
+          <div id="modal-subtitle" class="modal-subtitle"></div>
+        </div>
+        <button id="modal-close" class="btn btn-small">Close</button>
+      </div>
+
+      <div id="modal-body" class="modal-body">
+        <!-- filled by app.js -->
+      </div>
+
+      <div class="modal-footer">
+        <div class="note">
+          GitHub Pages demo is read-only. Later, this will save to SQL via an API.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
