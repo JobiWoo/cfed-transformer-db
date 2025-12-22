@@ -1,208 +1,311 @@
 const DATA_URL = "./data/transformers.json";
 
 /* =========================
-   CENTRALIZED FORMAT RULES
+   Formatting helpers
    ========================= */
-
 function safeStr(v) {
   if (v === null || v === undefined) return "";
   return String(v).trim();
 }
-
 function toNumberOrNaN(v) {
   if (v === null || v === undefined || v === "") return NaN;
   const n = Number(v);
   return Number.isNaN(n) ? NaN : n;
 }
-
 function fmtFixed(v, decimals) {
   const n = toNumberOrNaN(v);
   if (Number.isNaN(n)) return safeStr(v);
   return n.toFixed(decimals);
 }
+function fmtEpochMs(v) {
+  // Your JSON uses ms since epoch for many date fields.
+  // If value looks like a number large enough, convert. Otherwise return as-is.
+  if (v === null || v === undefined || v === "") return "";
+  const n = toNumberOrNaN(v);
+  if (Number.isNaN(n)) return safeStr(v);
+  // heuristic: anything after ~1990 in ms is > 631152000000
+  if (n > 300000000000) {
+    const d = new Date(n);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString();
+    }
+  }
+  return safeStr(v);
+}
 
-const FIELD_RULES = {
-  IMP: { label: "Imp", format: (v) => fmtFixed(v, 2) },
-};
-
-function formatField(key, value) {
-  const rule = FIELD_RULES[key];
-  return rule ? rule.format(value) : safeStr(value);
+function computeFeeder(row) {
+  return safeStr(row.FEEDER) || safeStr(row.Feeder) || "";
 }
 
 /* =========================
-   ELEMENTS
+   Elements
    ========================= */
-
 const serialInput = document.getElementById("serial-input");
 const btnSearch = document.getElementById("btn-serial-search");
 const btnPreview = document.getElementById("btn-preview");
-const btnQuit = document.getElementById("btn-quit");
+const btnNew = document.getElementById("btn-new");
+const btnClose = document.getElementById("btn-close");
 const btnHelp = document.getElementById("btn-help");
 const elStatus = document.getElementById("status");
 
-// Form fields (divs)
-const fTransId  = document.getElementById("f-transid");
-const fSerial   = document.getElementById("f-serial");
-const fMfg      = document.getElementById("f-mfg");
-const fType     = document.getElementById("f-type");
-const fKva      = document.getElementById("f-kva");
-const fImp      = document.getElementById("f-imp");
-const fPri      = document.getElementById("f-pri");
-const fSec      = document.getElementById("f-sec");
-const fStatus   = document.getElementById("f-status");
-const fLocation = document.getElementById("f-location");
-const fPole     = document.getElementById("f-pole");
-const fFeeder   = document.getElementById("f-feeder");
-const fRemarks  = document.getElementById("f-remarks");
+// tabs
+const tabButtons = Array.from(document.querySelectorAll(".tab"));
+const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
 
-// Data
+// record
 let allRows = [];
 let currentRecord = null;
 
 /* =========================
-   HELPERS
+   Small UI helpers
    ========================= */
-
-function setBlank(el) {
-  el.textContent = "—";
-  el.classList.add("blank");
-}
-
-function setValue(el, value) {
+function setValue(elId, value, isMultiline=false) {
+  const el = document.getElementById(elId);
+  if (!el) return;
   const v = safeStr(value);
   el.textContent = v ? v : "—";
   if (v) el.classList.remove("blank");
   else el.classList.add("blank");
+  if (isMultiline) el.classList.add("multiline");
 }
 
-function resetForm() {
+function resetAllFields() {
   currentRecord = null;
   btnPreview.disabled = true;
 
-  [
-    fTransId, fSerial, fMfg, fType, fKva, fImp, fPri, fSec,
-    fStatus, fLocation, fPole, fFeeder, fRemarks
-  ].forEach(setBlank);
+  // Status & Location
+  setValue("s-type", "");
+  setValue("s-kva", "");
+  setValue("s-pri", "");
+  setValue("s-sec", "");
+  setValue("s-status", "");
+  setValue("s-location", "");
+  setValue("s-hse", "");
+  setValue("s-street", "");
+  setValue("s-install", "");
+  setValue("s-pole", "");
+  setValue("s-feeder", "");
+  setValue("s-phase", "");
+  setValue("s-block", "");
+  setValue("s-secdist", "");
+  setValue("s-nocust", "");
+  setValue("s-banked", "");
+  setValue("s-custowned", "");
+  setValue("s-date-installed", "");
+  setValue("s-date-recovered", "");
+  setValue("s-remarks", "", true);
+  setValue("s-today", "");
+  setValue("s-user", "");
+
+  // Nameplate
+  setValue("n-type", "");
+  setValue("n-kva", "");
+  setValue("n-pri", "");
+  setValue("n-sec", "");
+  setValue("n-mfg", "");
+  setValue("n-serial", "");
+  setValue("n-imp", "");
+  setValue("n-year", "");
+  setValue("n-today", "");
+  setValue("n-user", "");
+
+  // Test
+  setValue("t-type", "");
+  setValue("t-kva", "");
+  setValue("t-pri", "");
+  setValue("t-sec", "");
+  setValue("t-date-tested", "");
+  setValue("t-pcb-sign", "");
+  setValue("t-pcb-amt", "");
+  setValue("t-weight", "");
+  setValue("t-gallons", "");
+  setValue("t-megger", "");
+  setValue("t-ttr", "", true);
+  setValue("t-polarity", "");
+  setValue("t-test-remarks", "", true);
+  setValue("t-today", "");
+  setValue("t-user", "");
+
+  // Inventory
+  setValue("i-type", "");
+  setValue("i-kva", "");
+  setValue("i-pri", "");
+  setValue("i-sec", "");
+  setValue("i-price", "");
+  setValue("i-date-inventoried", "");
+  setValue("i-date-delivered", "");
+  setValue("i-date-scrapped", "");
+  setValue("i-scrap-remarks", "", true);
+  setValue("i-today", "");
+  setValue("i-user", "");
 
   elStatus.textContent = "Enter a serial number and click Search.";
 }
 
-function normalizeSerialInput(raw) {
-  let s = safeStr(raw);
-
-  // VBA warning: If user types CP prefix, strip it and warn.
-  if (s.length >= 2 && s.slice(0, 2).toUpperCase() === "CP") {
-    alert("Do Not Use the CP Prefix When Searching for Cooper Transformers.\n\nCP will be removed automatically.");
-    s = s.slice(2);
-  }
-
-  // Remove spaces and common separators
-  s = s.replace(/\s+/g, "").replace(/[-_]/g, "");
-
-  return s;
-}
-
-function computeFeeder(row) {
-  // Your dataset has FEEDER and sometimes Feeder
-  const f1 = safeStr(row.FEEDER);
-  const f2 = safeStr(row.Feeder);
-  return f1 || f2 || "";
+function activateTab(tabId) {
+  tabButtons.forEach(b => b.classList.toggle("active", b.dataset.tab === tabId));
+  tabPanels.forEach(p => p.classList.toggle("active", p.id === tabId));
 }
 
 /* =========================
-   SEARCH
+   Search logic
    ========================= */
+function normalizeSerialInput(raw) {
+  let s = safeStr(raw);
+
+  if (s.slice(0, 2).toUpperCase() === "CP") {
+    alert("Do Not Use the CP Prefix When Searching for Cooper Transformers.\n\nCP will be removed automatically.");
+    s = s.slice(2);
+  }
+  s = s.replace(/\s+/g, "").replace(/[-_]/g, "");
+  return s;
+}
 
 function findBySerial(serialKey) {
-  // Most of your JSON SERIAL values appear numeric; safe match by string.
-  // Also handle cases where SERIAL may include leading zeros in input (rare).
   const key = safeStr(serialKey);
   if (!key) return null;
 
-  // 1) Exact string match
   let rec = allRows.find(r => safeStr(r.SERIAL).replace(/\s+/g, "") === key);
   if (rec) return rec;
 
-  // 2) Numeric-equivalent match (e.g., input "02246025" vs stored 2246025)
   const keyNum = String(Number(key));
   if (keyNum !== "NaN") {
     rec = allRows.find(r => String(Number(safeStr(r.SERIAL))) === keyNum);
     if (rec) return rec;
   }
-
   return null;
 }
 
-function runSerialSearch() {
-  resetForm(); // clears + disables preview
+function populateFromRecord(r) {
+  // Shared
+  const type = safeStr(r.TYPE);
+  const kva  = safeStr(r.KVA);
+  const pri  = safeStr(r.PRI_VOLT);
+  const sec  = safeStr(r.SEC_VOLT);
+  const today = fmtEpochMs(r.TODAY);
+  const user = safeStr(r.USERNAME);
+
+  // Status & location
+  setValue("s-type", type);
+  setValue("s-kva", kva);
+  setValue("s-pri", pri);
+  setValue("s-sec", sec);
+  setValue("s-status", safeStr(r.STATUS));
+  setValue("s-location", safeStr(r.LOCATION));
+  setValue("s-hse", safeStr(r.HSE_NUM));
+  setValue("s-street", safeStr(r.STREET));
+  setValue("s-install", safeStr(r.INSTALLATION));
+  setValue("s-pole", safeStr(r.POLE_NO));
+  setValue("s-feeder", computeFeeder(r));
+  setValue("s-phase", safeStr(r.PHASE));
+  setValue("s-block", safeStr(r.FEEDER_BLOCK));
+  setValue("s-secdist", safeStr(r.SEC_DIST));
+  setValue("s-nocust", safeStr(r.NO_CUST));
+  setValue("s-banked", safeStr(r["Banked Installation"]) || safeStr(r.Banked) || safeStr(r.BANKED));
+  setValue("s-custowned", safeStr(r.CUST_OWNED));
+  setValue("s-date-installed", fmtEpochMs(r.DATE_INSTALLED));
+  setValue("s-date-recovered", fmtEpochMs(r.DATE_RECOVERED));
+  setValue("s-remarks", safeStr(r.REMARKS), true);
+  setValue("s-today", today);
+  setValue("s-user", user);
+
+  // Nameplate
+  setValue("n-type", type);
+  setValue("n-kva", kva);
+  setValue("n-pri", pri);
+  setValue("n-sec", sec);
+  setValue("n-mfg", safeStr(r.MFG));
+  setValue("n-serial", safeStr(r.SERIAL));
+  setValue("n-imp", fmtFixed(r.IMP, 2));
+  setValue("n-year", safeStr(r.YEAR_MFG));
+  setValue("n-today", today);
+  setValue("n-user", user);
+
+  // Test
+  setValue("t-type", type);
+  setValue("t-kva", kva);
+  setValue("t-pri", pri);
+  setValue("t-sec", sec);
+  setValue("t-date-tested", fmtEpochMs(r.DATE_TESTED));
+  setValue("t-pcb-sign", safeStr(r.PCB_SIGN));
+  setValue("t-pcb-amt", safeStr(r.PCB_AMNT));
+  setValue("t-weight", safeStr(r.WEIGHT));
+  setValue("t-gallons", safeStr(r.GALLONS));
+  setValue("t-megger", safeStr(r.MEGGER_RESULTS));
+  setValue("t-ttr", safeStr(r.TTR_RESULTS), true);
+  setValue("t-polarity", safeStr(r.POLARITY));
+  setValue("t-test-remarks", safeStr(r.TEST_REMARKS), true);
+  setValue("t-today", today);
+  setValue("t-user", user);
+
+  // Inventory
+  setValue("i-type", type);
+  setValue("i-kva", kva);
+  setValue("i-pri", pri);
+  setValue("i-sec", sec);
+  setValue("i-price", safeStr(r.PRICE));
+  setValue("i-date-inventoried", fmtEpochMs(r.DATE_INVENTORIED));
+  setValue("i-date-delivered", fmtEpochMs(r.DATE_DELIVERED));
+  setValue("i-date-scrapped", fmtEpochMs(r.DATE_SCRAPPED));
+  setValue("i-scrap-remarks", safeStr(r.SCRAP_REMARKS), true);
+  setValue("i-today", today);
+  setValue("i-user", user);
+
+  btnPreview.disabled = false;
+}
+
+function runSearch() {
+  resetAllFields();
 
   const raw = serialInput.value;
-  const serialKey = normalizeSerialInput(raw);
+  const key = normalizeSerialInput(raw);
 
-  if (!serialKey) {
+  if (!key) {
     alert("Enter a Serial Number to search.");
     serialInput.focus();
     return;
   }
 
-  const rec = findBySerial(serialKey);
-
+  const rec = findBySerial(key);
   if (!rec) {
-    alert(`No Transformer with Serial Number ${serialKey} exists in the dataset.`);
+    alert(`No Transformer with Serial Number ${key} exists in the dataset.`);
     serialInput.focus();
-    elStatus.textContent = `No match for serial: ${serialKey}`;
+    elStatus.textContent = `No match for serial: ${key}`;
     return;
   }
 
   currentRecord = rec;
+  populateFromRecord(rec);
+  elStatus.textContent = `Found Serial ${safeStr(rec.SERIAL)} • Trans_ID ${safeStr(rec.TRANS_ID)}`;
 
-  // Populate the form (read-only)
-  setValue(fTransId, rec.TRANS_ID);
-  setValue(fSerial, rec.SERIAL);
-  setValue(fMfg, rec.MFG);
-  setValue(fType, rec.TYPE);
-  setValue(fKva, rec.KVA);
-  setValue(fImp, formatField("IMP", rec.IMP));
-  setValue(fPri, rec.PRI_VOLT);
-  setValue(fSec, rec.SEC_VOLT);
-  setValue(fStatus, rec.STATUS);
-  setValue(fLocation, rec.LOCATION);
-  setValue(fPole, rec.POLE_NO);
-  setValue(fFeeder, computeFeeder(rec));
-  setValue(fRemarks, rec.REMARKS);
-
-  btnPreview.disabled = false;
-  elStatus.textContent = `Found serial ${safeStr(rec.SERIAL)} (Trans_ID ${safeStr(rec.TRANS_ID)})`;
+  // After a successful search, default to Status & Location tab like Access
+  activateTab("tab-status");
 }
 
 /* =========================
-   PREVIEW (single record)
+   Preview Record
    ========================= */
-
-function buildRecordPreviewHtml(rec) {
+function buildPreviewHtml(r) {
   const now = new Date().toLocaleString();
-
   const rows = [
-    ["Trans_ID", safeStr(rec.TRANS_ID)],
-    ["Serial", safeStr(rec.SERIAL)],
-    ["Manufacturer", safeStr(rec.MFG)],
-    ["Type", safeStr(rec.TYPE)],
-    ["KVA", safeStr(rec.KVA)],
-    ["Imp", formatField("IMP", rec.IMP)],
-    ["Primary", safeStr(rec.PRI_VOLT)],
-    ["Secondary", safeStr(rec.SEC_VOLT)],
-    ["Status", safeStr(rec.STATUS)],
-    ["Location", safeStr(rec.LOCATION)],
-    ["Pole No", safeStr(rec.POLE_NO)],
-    ["Feeder", computeFeeder(rec)],
-    ["Remarks", safeStr(rec.REMARKS)]
+    ["Serial", safeStr(r.SERIAL)],
+    ["Manufacturer", safeStr(r.MFG)],
+    ["Type", safeStr(r.TYPE)],
+    ["KVA", safeStr(r.KVA)],
+    ["Primary", safeStr(r.PRI_VOLT)],
+    ["Secondary", safeStr(r.SEC_VOLT)],
+    ["Imp", fmtFixed(r.IMP, 2)],
+    ["Status", safeStr(r.STATUS)],
+    ["Location", safeStr(r.LOCATION)],
+    ["Pole No", safeStr(r.POLE_NO)],
+    ["Feeder", computeFeeder(r)],
+    ["Remarks", safeStr(r.REMARKS)]
   ];
 
-  const body = rows.map(([k, v]) => `
+  const body = rows.map(([k,v]) => `
     <tr>
-      <td style="width:220px; font-weight:800; color:#0a2f60;">${k}</td>
-      <td>${v ? v : "—"}</td>
+      <td style="width:220px;font-weight:900;color:#0a2f60;">${k}</td>
+      <td style="white-space:pre-wrap;">${v || "—"}</td>
     </tr>
   `).join("");
 
@@ -218,7 +321,6 @@ function buildRecordPreviewHtml(rec) {
     .meta{ font-size:12px; color:#6b7280; margin-bottom:12px; }
     table{ width:100%; border-collapse:collapse; }
     td{ padding:8px 10px; border-bottom:1px solid #e5e7eb; font-size:13px; vertical-align:top; }
-    tr:hover td{ background:#f7f9fc; }
     .wrap{ border:1px solid #d8e0ea; border-radius:12px; overflow:hidden; }
     .hdr{ background:#0b3a78; color:#fff; padding:10px 12px; font-weight:900; }
     @media print{ body{ margin:10mm; } }
@@ -227,14 +329,9 @@ function buildRecordPreviewHtml(rec) {
 <body>
   <h1>Transformer Record</h1>
   <div class="meta">Generated: ${now}</div>
-
   <div class="wrap">
-    <div class="hdr">Serial: ${safeStr(rec.SERIAL)} • Trans_ID: ${safeStr(rec.TRANS_ID)}</div>
-    <table>
-      <tbody>
-        ${body}
-      </tbody>
-    </table>
+    <div class="hdr">Serial: ${safeStr(r.SERIAL)} • Trans_ID: ${safeStr(r.TRANS_ID)}</div>
+    <table><tbody>${body}</tbody></table>
   </div>
 </body>
 </html>`;
@@ -242,8 +339,7 @@ function buildRecordPreviewHtml(rec) {
 
 function openPreview() {
   if (!currentRecord) return;
-  const html = buildRecordPreviewHtml(currentRecord);
-
+  const html = buildPreviewHtml(currentRecord);
   const w = window.open("", "_blank");
   if (!w) {
     alert("Popup blocked. Please allow popups for Preview.");
@@ -255,20 +351,20 @@ function openPreview() {
 }
 
 /* =========================
-   HELP / INIT / EVENTS
+   Help / init / events
    ========================= */
-
 function showHelp() {
   alert(
 `Search By Serial Number
 
-1) Enter a serial number and click Search (or press Enter).
-2) The record form will populate if found.
-3) Preview prints a single-record sheet.
+• Enter a serial number and click Search (or press Enter)
+• Tabs display different sections of the transformer record:
+  - Status & Location
+  - Nameplate Information
+  - Test Results
+  - Inventory Information
 
-Notes:
-• Do not include the "CP" prefix — if you do, it will be removed automatically.
-• This version is read-only. Later, this page will save changes to SQL Server.`
+This version is read-only. Later we will allow edits + Save to SQL Server (with permissions).`
   );
 }
 
@@ -278,24 +374,35 @@ async function init() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     allRows = await res.json();
 
-    resetForm();
+    resetAllFields();
     serialInput.focus();
     elStatus.textContent = `Loaded ${allRows.length} transformers • Ready to search.`;
+
+    // tab clicks
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => activateTab(btn.dataset.tab));
+    });
+
   } catch (err) {
-    resetForm();
+    resetAllFields();
     elStatus.textContent = `Failed to load data: ${err.message}`;
   }
 }
 
-// Events
-btnSearch.addEventListener("click", runSerialSearch);
+btnSearch.addEventListener("click", runSearch);
 serialInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") runSerialSearch();
+  if (e.key === "Enter") runSearch();
 });
 
 btnPreview.addEventListener("click", openPreview);
 
-btnQuit.addEventListener("click", () => {
+btnNew.addEventListener("click", () => {
+  resetAllFields();
+  serialInput.value = "";
+  serialInput.focus();
+});
+
+btnClose.addEventListener("click", () => {
   window.location.href = "./index.html";
 });
 
