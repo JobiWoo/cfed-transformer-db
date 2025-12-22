@@ -43,6 +43,32 @@ function formatField(key, value) {
 }
 
 /* =========================
+   STATUS BADGE HELPERS
+   ========================= */
+function statusClass(status) {
+  const s = normalizeUpper(status);
+
+  // Primary statuses you care about
+  if (s === "IN STOCK") return "status-green";
+  if (s === "IN SERVICE") return "status-blue";
+  if (s === "ON HOLD") return "status-amber";
+  if (s === "NEEDS TESTED") return "status-orange";
+  if (s === "SCRAPPED") return "status-red";
+
+  // Other known inventory-ish statuses you mentioned
+  if (s === "NEEDS PAINTED") return "status-orange";
+  if (s === "RECOVERED T.B.T." || s === "NEW T.B.T.") return "status-green";
+
+  return "status-gray";
+}
+
+function renderStatusBadge(status) {
+  const text = formatField("STATUS", status) || "—";
+  const cls = statusClass(text);
+  return `<span class="status-pill ${cls}">${text}</span>`;
+}
+
+/* =========================
    INVENTORY PAGE BEHAVIOR
    ========================= */
 const INVENTORY_STATUSES = [
@@ -161,7 +187,7 @@ function renderGrid(rows) {
       <td>${formatField("MFG", r.MFG)}</td>
       <td>${formatField("SERIAL", r.SERIAL)}</td>
       <td>${formatField("IMP", r.IMP)}</td>
-      <td>${formatField("STATUS", r.STATUS)}</td>
+      <td>${renderStatusBadge(r.STATUS)}</td>
       <td>${formatField("LOCATION", r.LOCATION)}</td>
     `;
 
@@ -208,7 +234,7 @@ function closeModal() {
    ========================= */
 const REPORT_KEYS = ["MFG", "SERIAL", "IMP", "LOCATION", "STATUS", "REMARKS"];
 
-// Build a human-friendly criteria string from current dropdowns
+// Human-friendly criteria string from current dropdowns
 function getCriteriaSummary() {
   const typeVal = elType.value || "Any";
   const kvaVal  = elKva.value  || "Any";
@@ -223,7 +249,10 @@ function buildReportHtml(rows, title) {
 
   const head = REPORT_KEYS.map(k => `<th>${FIELD_RULES[k]?.label || k}</th>`).join("");
   const body = rows.map(r => {
-    const tds = REPORT_KEYS.map(k => `<td>${formatField(k, r[k])}</td>`).join("");
+    const tds = REPORT_KEYS.map(k => {
+      if (k === "STATUS") return `<td>${renderStatusBadge(r.STATUS)}</td>`;
+      return `<td>${formatField(k, r[k])}</td>`;
+    }).join("");
     return `<tr>${tds}</tr>`;
   }).join("");
 
@@ -264,6 +293,21 @@ function buildReportHtml(rows, title) {
       max-width:520px;
       word-wrap:break-word;
     }
+
+    /* Inline copy of status pill styles for print window */
+    .status-pill{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:6px 10px; border-radius:999px;
+      font-weight:900; font-size:12px; letter-spacing:.02em;
+      border:1px solid #d8e0ea; background:#f7f9fc; color:#1f2937;
+    }
+    .status-green{ background:#e8f7ee; border-color:#bfe7cd; color:#0f5132; }
+    .status-blue{  background:#e8f1ff; border-color:#c9dcff; color:#0b3a78; }
+    .status-amber{ background:#fff4d6; border-color:#ffe1a6; color:#7a4a00; }
+    .status-orange{background:#ffedd5; border-color:#ffd6a1; color:#7a2f00; }
+    .status-red{   background:#fde8e8; border-color:#f5bebe; color:#7a1111; }
+    .status-gray{  background:#f1f5f9; border-color:#d5dde7; color:#334155; }
+
     @media print{
       body{ margin:10mm; }
       th{ position:static; }
@@ -317,7 +361,8 @@ function showHelp() {
 Inventory statuses included:
 IN STOCK, NEW T.B.T., RECOVERED T.B.T., NEEDS TESTED, ON HOLD, NEEDS PAINTED
 
-Preview/Print now include a Criteria line showing your selected Type/KVA/Primary/Secondary.`
+Status is shown with color badges to speed up scanning.
+Preview/Print include a Criteria line showing Type/KVA/Primary/Secondary.`
   );
 }
 
