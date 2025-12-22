@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Transformers By Pole Number</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="site-topbar">
+      <div class="brand">
+        <div class="brand-title">City of Cuyahoga Falls</div>
+        <div class="brand-subtitle">Electric Department • Transformer Inventory</div>
+      </div>
+
+      <div class="top-actions">
+        <a class="link-btn" href="./home.html">Home</a>
+        <a class="link-btn" href="./index.html">Inventory</a>
+        <button id="btn-help" class="link-btn" type="button">Help</button>
+      </div>
+    </div>
+
+    <div class="app-header">
+      <div class="app-title-row">
+        <h1 class="app-title">Transformers By Pole Number</h1>
+        <div class="app-badge">Search • Read-Only Demo</div>
+      </div>
+
+      <div class="filters">
+        <div class="filter-row">
+          <label class="filter-label">Enter Pole Number</label>
+
+          <input id="pole-input" class="search" type="text" placeholder="e.g., M13929 or CF1586" />
+
+          <div></div>
+          <div></div>
+
+          <button id="btn-pole-search" class="btn btn-primary" type="button">Search</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="grid-panel">
+      <div class="grid-toolbar">
+        <input id="search" class="search" type="search" placeholder="Search within results…" />
+        <div id="status" class="status">Enter a pole number and click Search.</div>
+      </div>
+
+      <div class="grid-wrap">
+        <table class="grid" id="grid">
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>KVA</th>
+              <th>Serial</th>
+              <th>Pri</th>
+              <th>Sec</th>
+              <th>Feeder</th>
+            </tr>
+          </thead>
+          <tbody id="grid-body"></tbody>
+        </table>
+      </div>
+
+      <div class="hint">Tip: Pole numbers are normalized for case/spacing (M13929 = m13929).</div>
+    </section>
+
+    <aside class="button-bar">
+      <button id="btn-viewedit" class="btn btn-icon" disabled type="button">
+        <span class="icon">✎</span>
+        <span>View/Edit</span>
+      </button>
+
+      <button id="btn-preview" class="btn btn-icon" disabled type="button">
+        <span class="icon">🔍</span>
+        <span>Preview</span>
+      </button>
+
+      <button id="btn-quit" class="btn btn-icon" type="button">
+        <span class="icon">⏻</span>
+        <span>Quit</span>
+      </button>
+    </aside>
+  </main>
+
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">View/Edit Transformer</div>
+          <div id="modal-subtitle" class="modal-subtitle"></div>
+        </div>
+        <button id="modal-close" class="btn btn-small" type="button">Close</button>
+      </div>
+
+      <div id="modal-body" class="modal-body"></div>
+
+      <div class="modal-footer">
+        <div class="note">
+          GitHub Pages demo is read-only. Later, this will save to SQL via an API.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="pole.js"></script>
+</body>
+</html>
