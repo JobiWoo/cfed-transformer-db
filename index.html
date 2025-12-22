@@ -8,35 +8,58 @@
 </head>
 <body>
   <!-- ACCESS-LIKE FORM HEADER -->
-  <header class="form-header">
-    <div class="title-block">
-      <div class="form-title">Transformer Inventory Listing</div>
+<header class="site-header">
+  <div class="site-topbar">
+    <div class="brand">
+      <div class="brand-title">City of Cuyahoga Falls</div>
+      <div class="brand-subtitle">Electric Department • Transformer Inventory</div>
+    </div>
+
+    <div class="top-actions">
+      <button id="btn-help" class="link-btn" type="button">Help</button>
+    </div>
+  </div>
+
+  <div class="app-header">
+    <div class="app-title-row">
+      <h1 class="app-title">Transformer Inventory Listing</h1>
+      <div class="app-badge">Internal Tool • Read-Only Demo</div>
     </div>
 
     <div class="filters">
       <div class="filter-row">
-        <label class="filter-label">Select Transformer Type &amp; KVA</label>
+        <label class="filter-label">Transformer Type &amp; KVA</label>
+
         <select id="filter-type" class="select">
-          <option value="">(All Types)</option>
+          <option value="">All Types</option>
         </select>
+
         <select id="filter-kva" class="select">
-          <option value="">(All KVA)</option>
+          <option value="">All KVA</option>
         </select>
       </div>
 
       <div class="filter-row">
-        <label class="filter-label">Select Primary &amp; Secondary Voltage</label>
+        <label class="filter-label">Primary / Secondary / Status</label>
+
         <select id="filter-pri" class="select">
-          <option value="">(All Primary)</option>
-        </select>
-        <select id="filter-sec" class="select">
-          <option value="">(All Secondary)</option>
+          <option value="">All Primary</option>
         </select>
 
-        <button id="btn-apply" class="btn btn-primary">Search</button>
+        <select id="filter-sec" class="select">
+          <option value="">All Secondary</option>
+        </select>
+
+        <select id="filter-status" class="select">
+          <option value="">All Status</option>
+        </select>
+
+        <button id="btn-apply" class="btn btn-primary" type="button">Search</button>
       </div>
     </div>
-  </header>
+  </div>
+</header>
+
 
   <!-- MAIN LAYOUT: GRID + RIGHT BUTTON BAR -->
   <main class="layout">
