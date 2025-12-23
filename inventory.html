@@ -3,119 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Transformer Inventory • Listing</title>
-  <link rel="stylesheet" href="./styles.css" />
-
-  <!-- iPad-friendly details sheet (inline CSS so you don't have to touch styles.css) -->
-  <style>
-    .sheet.hidden{ display:none; }
-    .sheet{
-      position:fixed;
-      inset:0;
-      z-index:9999;
-      display:flex;
-      align-items:flex-end;
-      justify-content:center;
-    }
-    .sheet-backdrop{
-      position:absolute;
-      inset:0;
-      background:rgba(0,0,0,.35);
-    }
-    .sheet-card{
-      position:relative;
-      width:min(900px, 96vw);
-      max-height:82vh;
-      background:#fff;
-      border:1px solid var(--line);
-      border-radius:16px 16px 0 0;
-      box-shadow: 0 18px 55px rgba(0,0,0,.25);
-      overflow:hidden;
-    }
-    .sheet-header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:12px 14px;
-      background:#f7f9fc;
-      border-bottom:1px solid var(--line);
-    }
-    .sheet-title{
-      font-weight:900;
-      color:#0b1220;
-    }
-    .sheet-close,
-    .sheet-close-wide{
-      border:1px solid var(--line);
-      background:#fff;
-      border-radius:12px;
-      padding:10px 12px;
-      font-weight:900;
-      cursor:pointer;
-    }
-    .sheet-close-wide{ width:100%; }
-    .sheet-body{
-      padding:12px 14px;
-      overflow:auto;
-      max-height:calc(82vh - 120px);
-    }
-    .sheet-footer{
-      padding:12px 14px;
-      border-top:1px solid var(--line);
-      background:#fbfdff;
-    }
-
-    /* Make the details display look clean */
-    .details-grid{
-      display:grid;
-      grid-template-columns: 260px 1fr;
-      gap:10px;
-      align-items:start;
-    }
-    .details-row{
-      padding:8px 0;
-      border-bottom:1px dashed #e6edf6;
-    }
-    .details-label{
-      font-weight:900;
-      color:#0a2f60;
-      font-size:13px;
-      padding-right:10px;
-    }
-    .details-value{
-      border:1px solid #e7edf6;
-      border-radius:12px;
-      background:#fbfdff;
-      padding:10px 12px;
-      font-family: var(--mono);
-      font-size:13px;
-      word-break:break-word;
-      white-space:pre-wrap;
-    }
-
-    @media (max-width: 980px){
-      .sheet-card{ width:100vw; }
-      .details-grid{ grid-template-columns: 1fr; }
-    }
-  </style>
+  <title>Transformer Inventory Listing</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
 
-  <!-- Top header like the other pages -->
+  <!-- HEADER -->
   <header class="site-header">
     <div class="site-topbar">
-      <div>
+      <div class="brand">
         <div class="brand-title">City of Cuyahoga Falls</div>
         <div class="brand-subtitle">Electric Department • Transformer Inventory</div>
       </div>
+
       <div class="top-actions">
         <a class="link-btn" href="./index.html">Main Menu</a>
-        <a class="link-btn" href="./inventory.html">Inventory</a>
         <a class="link-btn" href="./pole.html">Pole Search</a>
-        <a class="link-btn" href="./serial.html">Serial Search</a>
-        <a class="link-btn" href="./reports.html">Reports</a>
+        <button id="btn-help" class="link-btn" type="button">Help</button>
       </div>
     </div>
 
@@ -124,38 +28,58 @@
         <h1 class="app-title">Transformer Inventory Listing</h1>
         <div class="app-badge">Inventory Statuses Only • Read-Only Demo</div>
       </div>
+
+      <div class="filters">
+        <div class="filter-row">
+          <label class="filter-label">Transformer Type &amp; KVA</label>
+
+          <select id="filter-type" class="select">
+            <option value="">All Types</option>
+          </select>
+
+          <select id="filter-kva" class="select">
+            <option value="">All KVA</option>
+          </select>
+
+          <div></div>
+          <div></div>
+        </div>
+
+        <div class="filter-row">
+          <label class="filter-label">Primary / Secondary</label>
+
+          <select id="filter-pri" class="select">
+            <option value="">All Primary</option>
+          </select>
+
+          <select id="filter-sec" class="select">
+            <option value="">All Secondary</option>
+          </select>
+
+          <div></div>
+          <button id="btn-apply" class="btn btn-primary" type="button">
+            Search
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
-  <!-- Filters -->
-  <section class="filters">
-    <div class="filter-row">
-      <div class="filter-label">Transformer Type &amp; KVA</div>
-      <select class="select" id="typeFilter"></select>
-      <select class="select" id="kvaFilter"></select>
-      <div class="filter-label">Primary / Secondary</div>
-      <select class="select" id="primaryFilter"></select>
-      <select class="select" id="secondaryFilter"></select>
-      <button class="btn btn-primary btn-small" id="btnSearch" type="button">Search</button>
-    </div>
-
-    <div class="filter-row" style="grid-template-columns: 260px 1fr auto;">
-      <div class="filter-label">Search</div>
-      <input class="search" id="textSearch" placeholder="Search in inventory..." />
-      <button class="btn btn-small" id="btnReset" type="button">Reset</button>
-    </div>
-  </section>
-
-  <!-- Main layout -->
+  <!-- MAIN CONTENT -->
   <main class="layout">
     <section class="grid-panel">
       <div class="grid-toolbar">
-        <div class="status" id="statusLine">Loading inventory…</div>
-        <div class="status" id="countLine"></div>
+        <input
+          id="search"
+          class="search"
+          type="search"
+          placeholder="Search in inventory…"
+        />
+        <div id="status" class="status">Loading…</div>
       </div>
 
       <div class="grid-wrap">
-        <table class="grid" aria-label="Transformer Inventory">
+        <table class="grid" id="grid">
           <thead>
             <tr>
               <th>Manufacturer</th>
@@ -165,302 +89,91 @@
               <th>Location</th>
             </tr>
           </thead>
-          <tbody id="gridBody"></tbody>
+          <tbody id="grid-body"></tbody>
         </table>
       </div>
 
       <div class="hint">
-        Tip: tap/click a row to view details. Use “Back” to return (iPad-friendly).
+        Default view includes only inventory statuses:
+        <strong>
+          IN STOCK, NEW T.B.T., RECOVERED T.B.T., NEEDS TESTED, ON HOLD, NEEDS PAINTED
+        </strong>.
+        Click a row to select a transformer.
       </div>
     </section>
 
+    <!-- RIGHT BUTTON BAR -->
     <aside class="button-bar">
-      <button class="btn btn-primary" id="btnTop" type="button">Scroll to Top</button>
-      <button class="btn" id="btnPrint" type="button">Print</button>
-      <div class="note">
-        This is a read-only listing. Editing can be added later when SQL + authentication is approved.
-      </div>
+      <button
+        id="btn-viewedit"
+        class="btn btn-icon"
+        disabled
+        type="button"
+      >
+        <span class="icon">✎</span>
+        <span>View/Edit</span>
+      </button>
+
+      <button
+        id="btn-preview"
+        class="btn btn-icon"
+        disabled
+        type="button"
+      >
+        <span class="icon">🔍</span>
+        <span>Preview</span>
+      </button>
+
+      <button
+        id="btn-print"
+        class="btn btn-icon"
+        disabled
+        type="button"
+      >
+        <span class="icon">🖨️</span>
+        <span>Print</span>
+      </button>
+
+      <button
+        id="btn-quit"
+        class="btn btn-icon"
+        type="button"
+      >
+        <span class="icon">⏻</span>
+        <span>Quit</span>
+      </button>
     </aside>
   </main>
 
-  <!-- Footer nav -->
-  <footer class="menu-footer">
-    <a class="menu-footer-link" href="./inventory.html">Open Inventory</a>
-    <span class="menu-footer-sep">|</span>
-    <a class="menu-footer-link" href="./pole.html">Pole Search</a>
-    <span class="menu-footer-sep">|</span>
-    <a class="menu-footer-link" href="./serial.html">Serial Search</a>
-    <span class="menu-footer-sep">|</span>
-    <a class="menu-footer-link" href="./service.html">In Service</a>
-    <span class="menu-footer-sep">|</span>
-    <a class="menu-footer-link" href="./reports.html">Reports</a>
-  </footer>
-
-  <!-- iPad-friendly Details Sheet -->
-  <div id="detailsSheet" class="sheet hidden" role="dialog" aria-modal="true">
-    <div class="sheet-backdrop" id="sheetBackdrop"></div>
-
-    <div class="sheet-card" role="document">
-      <div class="sheet-header">
-        <div class="sheet-title" id="sheetTitle">Transformer Details</div>
-        <button class="sheet-close" id="sheetCloseBtn" type="button">Back</button>
+  <!-- VIEW / EDIT MODAL -->
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">View / Edit Transformer</div>
+          <div id="modal-subtitle" class="modal-subtitle"></div>
+        </div>
+        <button
+          id="modal-close"
+          class="btn btn-small"
+          type="button"
+        >
+          Close
+        </button>
       </div>
 
-      <div class="sheet-body" id="sheetBody"></div>
+      <div id="modal-body" class="modal-body"></div>
 
-      <div class="sheet-footer">
-        <button class="sheet-close-wide" id="sheetCloseBtnBottom" type="button">Back to Results</button>
+      <div class="modal-footer">
+        <div class="note">
+          GitHub Pages demo is read-only.
+          Future versions will connect directly to SQL Server.
+        </div>
       </div>
     </div>
   </div>
 
-  <script>
-    // ---------- Robust field helpers ----------
-    function pick(obj, keys, fallback=""){
-      for(const k of keys){
-        if(obj && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] !== null && obj[k] !== undefined && obj[k] !== ""){
-          return obj[k];
-        }
-      }
-      return fallback;
-    }
-    function norm(s){ return (s ?? "").toString().trim(); }
-
-    function feederLabelMaybe(v){
-      const n = Number(v);
-      if (n === 1203) return "THEISS 3";
-      if (n === 1209) return "THEISS 9";
-      return norm(v);
-    }
-
-    function statusPillClass(status){
-      const s = norm(status).toUpperCase();
-      if (s.includes("IN STOCK")) return "status-pill status-green";
-      if (s.includes("IN SERVICE")) return "status-pill status-blue";
-      if (s.includes("ON HOLD")) return "status-pill status-amber";
-      if (s.includes("NEEDS")) return "status-pill status-orange";
-      if (s.includes("SCRAP")) return "status-pill status-red";
-      return "status-pill status-gray";
-    }
-
-    // ---------- iPad-friendly sheet ----------
-    function openDetailsSheet(html, titleText){
-      const sheet = document.getElementById("detailsSheet");
-      const body = document.getElementById("sheetBody");
-      const title = document.getElementById("sheetTitle");
-      body.innerHTML = html;
-      title.textContent = titleText || "Transformer Details";
-      sheet.classList.remove("hidden");
-    }
-    function closeDetailsSheet(){
-      document.getElementById("detailsSheet").classList.add("hidden");
-    }
-    document.getElementById("sheetBackdrop").addEventListener("click", closeDetailsSheet);
-    document.getElementById("sheetCloseBtn").addEventListener("click", closeDetailsSheet);
-    document.getElementById("sheetCloseBtnBottom").addEventListener("click", closeDetailsSheet);
-
-    // ---------- Inventory state ----------
-    const state = { all: [], filtered: [] };
-
-    const els = {
-      type: document.getElementById("typeFilter"),
-      kva: document.getElementById("kvaFilter"),
-      pri: document.getElementById("primaryFilter"),
-      sec: document.getElementById("secondaryFilter"),
-      q: document.getElementById("textSearch"),
-      body: document.getElementById("gridBody"),
-      status: document.getElementById("statusLine"),
-      count: document.getElementById("countLine"),
-      btnSearch: document.getElementById("btnSearch"),
-      btnReset: document.getElementById("btnReset"),
-      btnTop: document.getElementById("btnTop"),
-      btnPrint: document.getElementById("btnPrint"),
-    };
-
-    function getFields(rec){
-      return {
-        manufacturer: norm(pick(rec, ["Manufacturer","MANUFACTURER","MFG_NAME","MFR","MFR_NAME","Make","MAKE"])),
-        serial: norm(pick(rec, ["Serial","SERIAL","Serial_Number","SERIAL_NUMBER","SERIAL_NO","SERIALNO"])),
-        impedance: pick(rec, ["Imp","IMP","Impedance","IMPEDANCE","IMPEDANCE_PCT","IMP_PCT","IMP_%"], ""),
-        status: norm(pick(rec, ["Status","STATUS","INV_STATUS","Inventory_Status"])),
-        location: norm(pick(rec, ["Location","LOCATION","LOC","Yard","YARD","STOCK_LOCATION"])),
-        type: norm(pick(rec, ["Transformer_Type","TRANSFORMER_TYPE","TYPE","XFM_TYPE","TRANS_TYPE"])),
-        kva: norm(pick(rec, ["KVA","Kva","kVA","KVA_RATING","KVA_RATING_KVA","KVA_ID","KVA_SIZE"])),
-        primary: norm(pick(rec, ["Primary","PRIMARY","PRI","PRIMARY_VOLT","PRI_VOLT"])),
-        secondary: norm(pick(rec, ["Secondary","SECONDARY","SEC","SECONDARY_VOLT","SEC_VOLT"])),
-        feeder: feederLabelMaybe(pick(rec, ["Feeder","FEEDER","FeederNumberValue","FEEDER_NO","FEEDER_ID"], "")),
-        pole: norm(pick(rec, ["Pole","POLE","Pole_Number","POLE_NO","POLE#"], "")),
-      };
-    }
-
-    function uniqueOptions(list){
-      const set = new Set(list.map(v => norm(v)).filter(v => v !== ""));
-      return Array.from(set).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"}));
-    }
-
-    function fillSelect(sel, label, options){
-      sel.innerHTML = "";
-      const opt0 = document.createElement("option");
-      opt0.value = "";
-      opt0.textContent = label;
-      sel.appendChild(opt0);
-
-      for(const v of options){
-        const opt = document.createElement("option");
-        opt.value = v;
-        opt.textContent = v;
-        sel.appendChild(opt);
-      }
-    }
-
-    function applyFilters(){
-      const type = norm(els.type.value);
-      const kva = norm(els.kva.value);
-      const pri = norm(els.pri.value);
-      const sec = norm(els.sec.value);
-      const q = norm(els.q.value).toLowerCase();
-
-      const filtered = state.all.filter(rec=>{
-        const f = getFields(rec);
-
-        if (type && f.type !== type) return false;
-        if (kva && f.kva !== kva) return false;
-        if (pri && f.primary !== pri) return false;
-        if (sec && f.secondary !== sec) return false;
-
-        if (q){
-          const hay = `${f.manufacturer} ${f.serial} ${f.status} ${f.location} ${f.kva} ${f.type} ${f.primary} ${f.secondary}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
-        return true;
-      });
-
-      state.filtered = filtered;
-      renderTable();
-    }
-
-    function renderTable(){
-      const rows = state.filtered;
-      els.body.innerHTML = "";
-
-      for(const rec of rows){
-        const f = getFields(rec);
-        const tr = document.createElement("tr");
-
-        const statusHtml = f.status
-          ? `<span class="${statusPillClass(f.status)}">${f.status}</span>`
-          : `<span class="status-pill status-gray">—</span>`;
-
-        tr.innerHTML = `
-          <td>${f.manufacturer || "—"}</td>
-          <td>${f.serial || "—"}</td>
-          <td>${f.impedance !== "" ? f.impedance : "—"}</td>
-          <td>${statusHtml}</td>
-          <td>${f.location || "—"}</td>
-        `;
-
-        tr.addEventListener("click", ()=>{
-          openDetailsSheet(renderDetails(rec), `Serial: ${f.serial || "—"}`);
-        });
-
-        els.body.appendChild(tr);
-      }
-
-      els.status.textContent = `Inventory records ${rows.length}`;
-      els.count.textContent = `Loaded ${state.all.length} transformers • Ready to search.`;
-    }
-
-    function renderDetails(rec){
-      const entries = Object.entries(rec || {})
-        .filter(([k,v]) => v !== null && v !== undefined && String(v).trim() !== "")
-        .sort(([a],[b]) => a.localeCompare(b));
-
-      let html = `<div class="details-grid">`;
-      for(const [k,v] of entries){
-        html += `
-          <div class="details-row details-label">${k}</div>
-          <div class="details-row">
-            <div class="details-value">${String(v)}</div>
-          </div>
-        `;
-      }
-      html += `</div>`;
-      return html;
-    }
-
-    function extractRows(data){
-      // Case 1: plain array
-      if (Array.isArray(data)) return data;
-
-      // Case 2: { rows: [...] }
-      if (data && Array.isArray(data.rows)) return data.rows;
-
-      // Case 3: ArcGIS-style { features: [ { attributes: {...} } ] }
-      if (data && Array.isArray(data.features)) {
-        return data.features.map(f => (f && typeof f === "object" && "attributes" in f) ? (f.attributes ?? f) : f);
-      }
-
-      // Case 4: keyed object { "0": {...}, "1": {...} }
-      if (data && typeof data === "object") return Object.values(data);
-
-      return [];
-    }
-
-    async function loadData(){
-      els.status.textContent = "Loading inventory…";
-
-      const res = await fetch("./data/transformers2.json", { cache: "no-store" });
-      if(!res.ok){
-        els.status.textContent = `Could not load ./data/transformers2.json (HTTP ${res.status})`;
-        return;
-      }
-
-      const data = await res.json();
-      const rows = extractRows(data);
-
-      if(!rows.length){
-        els.status.textContent = "Loaded file but found 0 usable rows (check JSON structure).";
-        els.count.textContent = "";
-        return;
-      }
-
-      state.all = rows;
-      state.filtered = rows;
-
-      // Build filter options from dataset
-      const types = uniqueOptions(rows.map(r => getFields(r).type));
-      const kvas  = uniqueOptions(rows.map(r => getFields(r).kva));
-      const pris  = uniqueOptions(rows.map(r => getFields(r).primary));
-      const secs  = uniqueOptions(rows.map(r => getFields(r).secondary));
-
-      fillSelect(els.type, "All Types", types);
-      fillSelect(els.kva, "All KVA", kvas);
-      fillSelect(els.pri, "All Primary", pris);
-      fillSelect(els.sec, "All Secondary", secs);
-
-      renderTable();
-    }
-
-    // UI events
-    els.btnSearch.addEventListener("click", applyFilters);
-    els.btnReset.addEventListener("click", ()=>{
-      els.type.value = "";
-      els.kva.value = "";
-      els.pri.value = "";
-      els.sec.value = "";
-      els.q.value = "";
-      state.filtered = state.all;
-      renderTable();
-    });
-    els.q.addEventListener("input", applyFilters);
-    els.btnTop.addEventListener("click", ()=>window.scrollTo({top:0, behavior:"smooth"}));
-    els.btnPrint.addEventListener("click", ()=>window.print());
-
-    loadData().catch(err=>{
-      console.error(err);
-      els.status.textContent = "Error loading inventory data (see console).";
-    });
-  </script>
-
+  <!-- SCRIPT -->
+  <script src="app.js"></script>
 </body>
 </html>
