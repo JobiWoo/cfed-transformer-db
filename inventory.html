@@ -172,9 +172,30 @@
       </div>
     </div>
   </div>
+  
+  <!-- Mobile/iPad friendly details sheet -->
+  <div id="detailsSheet" class="sheet hidden" role="dialog" aria-modal="true">
+    <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  
+    <div class="sheet-card" role="document">
+      <div class="sheet-header">
+        <div class="sheet-title">Transformer Details</div>
+        <button class="sheet-close" id="sheetCloseBtn" type="button">Back</button>
+      </div>
+  
+      <div class="sheet-body" id="sheetBody">
+        <!-- Your existing details HTML gets injected here -->
+      </div>
+  
+      <div class="sheet-footer">
+        <button class="sheet-close-wide" id="sheetCloseBtnBottom" type="button">Back to Results</button>
+      </div>
+    </div>
+  </div>
 
   <!-- SCRIPT -->
   <script src="app.js"></script>
+  
 </body>
 </html>
 
