@@ -1,9 +1,13 @@
-/* Feeder Analysis Report (static) - built from feeder_analysis_table.json */
+/* Feeder Analysis Report (static) - built from feeder_analysis_table.json
+   Simplified foreman view:
+   - No Block column
+   - No Block breakdown toggle
+   - No Min total kVA filter
+*/
+
 const state = {
   data: null,
   feeder: "ALL",
-  showBlocks: true,
-  minKva: "",
   q: "",
 };
 
@@ -31,9 +35,10 @@ function buildAgg(rows){
     total: 0
   };
   for(const r of rows){
-    agg.transformers += 1; // Count([Feeder]) => row count
-    const c = customers(r);
-    agg.cust += c;
+    // Access: Count([Feeder]) -> row count
+    agg.transformers += 1;
+
+    agg.cust += customers(r);
     agg.p1 += n(r.phase1_kva);
     agg.p2 += n(r.phase2_kva);
     agg.p3 += n(r.phase3_kva);
@@ -50,18 +55,14 @@ function byKey(map, key){
 function filterRows(all){
   const feeder = state.feeder;
   const q = state.q.trim().toLowerCase();
-  const minKva = state.minKva === "" ? null : Number(state.minKva);
 
   return all.filter(r=>{
     if(feeder !== "ALL" && r.feeder !== Number(feeder)) return false;
 
-    if(minKva !== null && kvaTotal(r) < minKva) return false;
-
     if(q){
-      const s = `${r.feeder_label} ${cleanStr(r.block)}`.toLowerCase();
+      const s = `${r.feeder_label}`.toLowerCase();
       if(!s.includes(q)) return false;
     }
-
     return true;
   });
 }
@@ -70,15 +71,13 @@ function render(){
   const all = state.data.rows;
   const rows = filterRows(all);
 
-  // Group feeder -> (optional) block
+  // Group by feeder
   const feederMap = new Map();
   for(const r of rows){
-    const fkey = r.feeder;
-    byKey(feederMap, fkey).push(r);
+    byKey(feederMap, r.feeder).push(r);
   }
 
   const feederKeys = Array.from(feederMap.keys()).sort((a,b)=>a-b);
-
   const tbody = document.querySelector("#reportBody");
   tbody.innerHTML = "";
 
@@ -88,53 +87,27 @@ function render(){
     const feederRows = feederMap.get(f);
     systemRows = systemRows.concat(feederRows);
 
-    // Feeder header row (like "Feeder 101")
+    const aF = buildAgg(feederRows);
+
+    // Feeder row
     const trH = document.createElement("tr");
     trH.className = "group";
     trH.innerHTML = `
-      <td colspan="2"><span style="font-weight:900">Feeder ${f}</span></td>
-      <td>${fmt2.format(buildAgg(feederRows).p1)}</td>
-      <td>${fmt2.format(buildAgg(feederRows).p2)}</td>
-      <td>${fmt2.format(buildAgg(feederRows).p3)}</td>
-      <td>${fmt2.format(buildAgg(feederRows).total)}</td>
-      <td>${fmt0.format(buildAgg(feederRows).transformers)}</td>
-      <td>${fmt0.format(buildAgg(feederRows).cust)}</td>
+      <td><span style="font-weight:900">Feeder ${f}</span></td>
+      <td>${fmt2.format(aF.p1)}</td>
+      <td>${fmt2.format(aF.p2)}</td>
+      <td>${fmt2.format(aF.p3)}</td>
+      <td>${fmt2.format(aF.total)}</td>
+      <td>${fmt0.format(aF.transformers)}</td>
+      <td>${fmt0.format(aF.cust)}</td>
     `;
     tbody.appendChild(trH);
 
-    if(state.showBlocks){
-      const blockMap = new Map();
-      for(const r of feederRows){
-        const b = cleanStr(r.block);
-        if(b === "") continue;
-        byKey(blockMap, b).push(r);
-      }
-      const blockKeys = Array.from(blockMap.keys()).sort((a,b)=>a.localeCompare(b));
-
-      for(const b of blockKeys){
-        const blockRows = blockMap.get(b);
-        const a = buildAgg(blockRows);
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td></td>
-          <td>${b}</td>
-          <td>${fmt2.format(a.p1)}</td>
-          <td>${fmt2.format(a.p2)}</td>
-          <td>${fmt2.format(a.p3)}</td>
-          <td>${fmt2.format(a.total)}</td>
-          <td>${fmt0.format(a.transformers)}</td>
-          <td>${fmt0.format(a.cust)}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-    }
-
-    // Feeder Total row (like "101 Total")
-    const aF = buildAgg(feederRows);
+    // Feeder Total row (kept to mirror the legacy feel)
     const trT = document.createElement("tr");
     trT.className = "total";
     trT.innerHTML = `
-      <td colspan="2">${f} Total</td>
+      <td>${f} Total</td>
       <td>${fmt2.format(aF.p1)}</td>
       <td>${fmt2.format(aF.p2)}</td>
       <td>${fmt2.format(aF.p3)}</td>
@@ -146,7 +119,7 @@ function render(){
 
     // spacer row
     const spacer = document.createElement("tr");
-    spacer.innerHTML = `<td colspan="8" style="height:8px;border-bottom:0;background:#fff"></td>`;
+    spacer.innerHTML = `<td colspan="7" style="height:8px;border-bottom:0;background:#fff"></td>`;
     tbody.appendChild(spacer);
   }
 
@@ -154,7 +127,7 @@ function render(){
   const sys = buildAgg(systemRows);
   const sysRow = document.querySelector("#systemTotalRow");
   sysRow.innerHTML = `
-    <td colspan="2">System Total</td>
+    <td>System Total</td>
     <td>${fmt2.format(sys.p1)}</td>
     <td>${fmt2.format(sys.p2)}</td>
     <td>${fmt2.format(sys.p3)}</td>
@@ -187,18 +160,6 @@ function wireUI(){
     render();
   });
 
-  const cb = document.querySelector("#showBlocks");
-  cb.addEventListener("change", ()=>{
-    state.showBlocks = cb.checked;
-    render();
-  });
-
-  const minKva = document.querySelector("#minKva");
-  minKva.addEventListener("input", ()=>{
-    state.minKva = minKva.value;
-    render();
-  });
-
   const q = document.querySelector("#q");
   q.addEventListener("input", ()=>{
     state.q = q.value;
@@ -208,12 +169,8 @@ function wireUI(){
   document.querySelector("#btnPrint").addEventListener("click", ()=>window.print());
   document.querySelector("#btnReset").addEventListener("click", ()=>{
     state.feeder = "ALL";
-    state.showBlocks = true;
-    state.minKva = "";
     state.q = "";
     sel.value = "ALL";
-    cb.checked = true;
-    minKva.value = "";
     q.value = "";
     render();
   });
