@@ -1,17 +1,14 @@
 /* Feeder Analysis Report (static) - built from feeder_analysis_table.json
    Foreman view:
    - No Block column
-   - Adds Substation filter
+   - Substation filter (auto-generated)
    - Fixes THEISS feeder labels (1203/1209 -> THEISS 3/THEISS 9)
+   - Substation rule:
+       - Theiss = feeders 1203, 1209
+       - Otherwise Substation = floor(feeder / 100)
 */
 
-const SUBSTATIONS = {
-  "All Substations": null,
-  "Substation 1": [101, 102, 103, 104],
-  "Substation 3": [301, 302, 303, 304, 323],
-  // Add more anytime:
-  // "Substation X": [ ... feeder numbers ... ],
-};
+const THEISS_FEEDERS = new Set([1203, 1209]);
 
 const FEEDER_LABEL_OVERRIDES = {
   1203: "THEISS 3",
@@ -20,9 +17,12 @@ const FEEDER_LABEL_OVERRIDES = {
 
 const state = {
   data: null,
-  substation: "All Substations",
+  substation: "ALL", // "ALL" | "THEISS" | number as string e.g. "1", "10", "13"
   feeder: "ALL",
   q: "",
+  // built at runtime from data:
+  substationToFeeders: new Map(), // key: "1"/"10"/"THEISS" -> Set(feeders)
+  feedersAll: [],
 };
 
 const fmt0 = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
@@ -32,6 +32,17 @@ function n(v){ return Number.isFinite(v) ? v : 0; }
 
 function feederLabel(feederNum){
   return FEEDER_LABEL_OVERRIDES[feederNum] ?? `Feeder ${feederNum}`;
+}
+
+function substationKeyForFeeder(feederNum){
+  if (THEISS_FEEDERS.has(feederNum)) return "THEISS";
+  // Works for 101->1, 401->4, 1001->10, 1302->13, 323->3, etc.
+  return String(Math.floor(feederNum / 100));
+}
+
+function substationLabel(key){
+  if (key === "THEISS") return "Theiss Substation";
+  return `Substation ${key}`;
 }
 
 function customers(row){
@@ -45,7 +56,7 @@ function kvaTotal(row){
 function buildAgg(rows){
   const agg = { transformers: 0, cust: 0, p1: 0, p2: 0, p3: 0, total: 0 };
   for(const r of rows){
-    agg.transformers += 1; // Access: Count([Feeder]) -> row count
+    agg.transformers += 1; // Access Count([Feeder]) => row count
     agg.cust += customers(r);
     agg.p1 += n(r.phase1_kva);
     agg.p2 += n(r.phase2_kva);
@@ -61,8 +72,8 @@ function byKey(map, key){
 }
 
 function allowedFeedersForSubstation(){
-  const list = SUBSTATIONS[state.substation];
-  return Array.isArray(list) ? new Set(list) : null; // null = allow all
+  if (state.substation === "ALL") return null;
+  return state.substationToFeeders.get(state.substation) ?? null;
 }
 
 function filterRows(all){
@@ -71,17 +82,16 @@ function filterRows(all){
   const allowed = allowedFeedersForSubstation();
 
   return all.filter(r=>{
-    // substation filter
-    if(allowed && !allowed.has(r.feeder)) return false;
+    if (allowed && !allowed.has(r.feeder)) return false;
 
-    // feeder filter
     if(feeder !== "ALL" && r.feeder !== Number(feeder)) return false;
 
-    // search filter (matches display label, including THEISS names)
     if(q){
+      // Match against the displayed label (includes THEISS names)
       const s = feederLabel(r.feeder).toLowerCase();
       if(!s.includes(q)) return false;
     }
+
     return true;
   });
 }
@@ -158,15 +168,56 @@ function render(){
   document.querySelector("#metaFeeders").textContent = fmt0.format(feederKeys.length);
 }
 
+function buildSubstationIndex(){
+  // Build feeder sets per substation from the dataset
+  state.substationToFeeders = new Map();
+
+  const feeders = Array.from(new Set(state.data.rows.map(r=>r.feeder))).sort((a,b)=>a-b);
+  state.feedersAll = feeders;
+
+  for(const f of feeders){
+    const key = substationKeyForFeeder(f);
+    if(!state.substationToFeeders.has(key)) state.substationToFeeders.set(key, new Set());
+    state.substationToFeeders.get(key).add(f);
+  }
+}
+
 function fillSubstationSelect(){
   const sel = document.querySelector("#substationSelect");
   sel.innerHTML = "";
-  Object.keys(SUBSTATIONS).forEach(name=>{
+
+  // Always include All
+  const optAll = document.createElement("option");
+  optAll.value = "ALL";
+  optAll.textContent = "All Substations";
+  sel.appendChild(optAll);
+
+  // Build a sorted list of keys: numeric substations first, then THEISS if present
+  const keys = Array.from(state.substationToFeeders.keys());
+
+  const numericKeys = keys
+    .filter(k => k !== "THEISS")
+    .map(k => Number(k))
+    .filter(Number.isFinite)
+    .sort((a,b)=>a-b)
+    .map(k => String(k));
+
+  const hasTheiss = state.substationToFeeders.has("THEISS");
+
+  for(const k of numericKeys){
     const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = name;
+    opt.value = k;
+    opt.textContent = substationLabel(k);
     sel.appendChild(opt);
-  });
+  }
+
+  if(hasTheiss){
+    const opt = document.createElement("option");
+    opt.value = "THEISS";
+    opt.textContent = substationLabel("THEISS");
+    sel.appendChild(opt);
+  }
+
   sel.value = state.substation;
 }
 
@@ -175,8 +226,7 @@ function fillFeederSelect(){
   sel.innerHTML = `<option value="ALL">All Feeders</option>`;
 
   const allowed = allowedFeedersForSubstation();
-  const feedersAll = Array.from(new Set(state.data.rows.map(r=>r.feeder))).sort((a,b)=>a-b);
-  const feeders = allowed ? feedersAll.filter(f=>allowed.has(f)) : feedersAll;
+  const feeders = allowed ? Array.from(allowed).sort((a,b)=>a-b) : state.feedersAll;
 
   for(const f of feeders){
     const opt = document.createElement("option");
@@ -200,8 +250,8 @@ function wireUI(){
   subSel.addEventListener("change", ()=>{
     state.substation = subSel.value;
     state.feeder = "ALL";
-    q.value = "";
     state.q = "";
+    q.value = "";
     fillFeederSelect();
     render();
   });
@@ -218,12 +268,11 @@ function wireUI(){
 
   document.querySelector("#btnPrint").addEventListener("click", ()=>window.print());
   document.querySelector("#btnReset").addEventListener("click", ()=>{
-    state.substation = "All Substations";
+    state.substation = "ALL";
     state.feeder = "ALL";
     state.q = "";
 
     subSel.value = state.substation;
-    feederSel.value = state.feeder;
     q.value = "";
 
     fillFeederSelect();
@@ -238,6 +287,7 @@ async function init(){
   document.querySelector("#printedDate").textContent =
     new Date().toLocaleDateString(undefined, { year:"numeric", month:"2-digit", day:"2-digit" });
 
+  buildSubstationIndex();
   fillSubstationSelect();
   fillFeederSelect();
   wireUI();
