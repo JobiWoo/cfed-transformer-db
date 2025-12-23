@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Transformer Inventory • Reports</title>
+  <link rel="stylesheet" href="./css/cfed.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">Transformer Inventory</div>
+
+    <div class="hero">
+      <h1>Report Menu</h1>
+      <div class="sub">Choose a report to view or print.</div>
+    </div>
+
+    <div class="main">
+      <div class="grid">
+        <div class="card">
+          <div class="h2">Available Reports</div>
+          <div class="small">These reports are generated from the exported feeder analysis dataset used by the legacy Access report.</div>
+          <div style="height:12px"></div>
+
+          <button class="btn" onclick="location.href='./feeder-analysis.html'">
+            <div class="icon">📊</div>
+            <div>
+              <div style="font-size:16px">Feeder Statistics</div>
+              <div class="small">Connected kVA by phase • Transformers • Customers • System Total</div>
+            </div>
+          </button>
+
+          <div style="height:10px"></div>
+
+          <button class="btn" disabled style="opacity:.55; cursor:not-allowed">
+            <div class="icon">🧾</div>
+            <div>Transformers by Feeder</div>
+            <div class="badge">Coming soon</div>
+          </button>
+
+          <div style="height:10px"></div>
+
+          <button class="btn" disabled style="opacity:.55; cursor:not-allowed">
+            <div class="icon">⚡</div>
+            <div>Overhead Transformers on 4kV Feeders</div>
+            <div class="badge">Coming soon</div>
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="h2">Notes</div>
+          <div class="small">
+            <ul>
+              <li>This site is static (GitHub Pages). Data is read from <code>/data</code> as JSON/CSV.</li>
+              <li>No direct SQL connections from the browser.</li>
+              <li>For accuracy, replace <code>data/feeder_analysis_table.json</code> with the latest export when needed.</li>
+              <li>Use the print button inside each report to generate a PDF.</li>
+            </ul>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="h2">Add this to your home page</div>
+          <div class="small">
+            If your <code>index.html</code> has a “Report Menu” button, point it to:<br/>
+            <code>./reports.html</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <a href="./index.html">Home</a>
+      <span style="opacity:.35">|</span>
+      <a href="./feeder-analysis.html">Feeder Statistics</a>
+    </div>
+  </div>
+</body>
+</html>

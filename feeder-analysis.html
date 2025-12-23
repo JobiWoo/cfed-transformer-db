@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Feeder Statistics • Transformer Inventory</title>
+  <link rel="stylesheet" href="./css/cfed.css" />
+  <style>
+    @media print{
+      body{background:#fff}
+      .app{box-shadow:none; border:0; margin:0; border-radius:0}
+      .footer, .toolbar, .topbar{display:none !important}
+      .hero{border-bottom:1px solid #e5e7eb}
+      .main{background:#fff}
+      table{min-width:0}
+      thead th{position:static}
+    }
+    .meta{
+      display:flex; gap:10px; flex-wrap:wrap;
+      margin:10px 0 0;
+      color:rgba(255,255,255,.92);
+      font-size:13px;
+      opacity:.95;
+    }
+    .chip{
+      border:1px solid rgba(255,255,255,.25);
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">Transformer Inventory</div>
+
+    <div class="hero">
+      <h1>Feeder Statistics</h1>
+      <div class="sub">Connected kVA by phase • Transformer count • Customer count</div>
+      <div class="meta">
+        <div class="chip">Printed: <span id="printedDate"></span></div>
+        <div class="chip">Rows: <span id="metaRows">0</span></div>
+        <div class="chip">Feeders: <span id="metaFeeders">0</span></div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="card">
+        <div class="toolbar">
+          <select id="feederSelect" class="select"></select>
+
+          <label class="small" style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="showBlocks" checked />
+            Show Block breakdown
+          </label>
+
+          <input id="minKva" class="input" style="width:170px" type="number" step="0.01" min="0" placeholder="Min total kVA…" />
+
+          <input id="q" class="input" style="min-width:220px; flex:1" placeholder="Search (feeder/block)…" />
+
+          <div class="spacer"></div>
+
+          <button id="btnReset" class="action">Reset</button>
+          <button id="btnPrint" class="action primary">Print</button>
+        </div>
+
+        <div id="loadError" class="small" style="display:none; padding:10px; border:1px solid #fecaca; background:#fff1f2; border-radius:12px;">
+          Could not load the dataset. Make sure <code>data/feeder_analysis_table.json</code> exists at the site root.
+        </div>
+
+        <div class="tablewrap" style="margin-top:10px;">
+          <table aria-label="Feeder Statistics">
+            <thead>
+              <tr>
+                <th>Feeder</th>
+                <th>Block</th>
+                <th>Phase 1 kVA</th>
+                <th>Phase 2 kVA</th>
+                <th>Phase 3 kVA</th>
+                <th>Total kVA</th>
+                <th># Transformers</th>
+                <th># Customers</th>
+              </tr>
+            </thead>
+            <tbody id="reportBody"></tbody>
+            <tfoot>
+              <tr class="total" id="systemTotalRow"></tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="small" style="margin-top:10px;">
+          Definitions (matches the legacy Access report):
+          <ul>
+            <li><b># Transformers</b> = <code>Count([Feeder])</code> (row count)</li>
+            <li><b># Customers</b> = <code>Sum(P1 Cust)+Sum(P2 Cust)+Sum(P3 Cust)+Sum(3 Phase Cust)</code></li>
+            <li><b>Total kVA</b> = <code>Sum(P1 kVA)+Sum(P2 kVA)+Sum(P3 kVA)</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <a href="./index.html">Home</a>
+      <span style="opacity:.35">|</span>
+      <a href="./reports.html">Report Menu</a>
+    </div>
+  </div>
+
+  <script src="./js/feeder-analysis.js"></script>
+</body>
+</html>
