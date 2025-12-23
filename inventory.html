@@ -215,7 +215,7 @@
   </div>
 
   <script>
-    // ---------- Robust field helpers (works even if column names vary) ----------
+    // ---------- Robust field helpers ----------
     function pick(obj, keys, fallback=""){
       for(const k of keys){
         if(obj && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] !== null && obj[k] !== undefined && obj[k] !== ""){
@@ -259,11 +259,8 @@
     document.getElementById("sheetCloseBtn").addEventListener("click", closeDetailsSheet);
     document.getElementById("sheetCloseBtnBottom").addEventListener("click", closeDetailsSheet);
 
-    // ---------- Inventory rendering ----------
-    const state = {
-      all: [],
-      filtered: []
-    };
+    // ---------- Inventory state ----------
+    const state = { all: [], filtered: [] };
 
     const els = {
       type: document.getElementById("typeFilter"),
@@ -288,7 +285,7 @@
         status: norm(pick(rec, ["Status","STATUS","INV_STATUS","Inventory_Status"])),
         location: norm(pick(rec, ["Location","LOCATION","LOC","Yard","YARD","STOCK_LOCATION"])),
         type: norm(pick(rec, ["Transformer_Type","TRANSFORMER_TYPE","TYPE","XFM_TYPE","TRANS_TYPE"])),
-        kva: norm(pick(rec, ["KVA","Kva","kVA","KVA_RATING","KVA_ID","KVA_SIZE"])),
+        kva: norm(pick(rec, ["KVA","Kva","kVA","KVA_RATING","KVA_RATING_KVA","KVA_ID","KVA_SIZE"])),
         primary: norm(pick(rec, ["Primary","PRIMARY","PRI","PRIMARY_VOLT","PRI_VOLT"])),
         secondary: norm(pick(rec, ["Secondary","SECONDARY","SEC","SECONDARY_VOLT","SEC_VOLT"])),
         feeder: feederLabelMaybe(pick(rec, ["Feeder","FEEDER","FeederNumberValue","FEEDER_NO","FEEDER_ID"], "")),
@@ -325,9 +322,6 @@
 
       const filtered = state.all.filter(rec=>{
         const f = getFields(rec);
-
-        // inventory-only: allow IN STOCK / ON HOLD / WAREHOUSE / etc. (you can tighten later)
-        // if your dataset includes non-inventory, you can filter here.
 
         if (type && f.type !== type) return false;
         if (kva && f.kva !== kva) return false;
@@ -381,7 +375,6 @@
         .filter(([k,v]) => v !== null && v !== undefined && String(v).trim() !== "")
         .sort(([a],[b]) => a.localeCompare(b));
 
-      // Make a clean two-column grid like the Access form feel
       let html = `<div class="details-grid">`;
       for(const [k,v] of entries){
         html += `
@@ -395,18 +388,42 @@
       return html;
     }
 
+    function extractRows(data){
+      // Case 1: plain array
+      if (Array.isArray(data)) return data;
+
+      // Case 2: { rows: [...] }
+      if (data && Array.isArray(data.rows)) return data.rows;
+
+      // Case 3: ArcGIS-style { features: [ { attributes: {...} } ] }
+      if (data && Array.isArray(data.features)) {
+        return data.features.map(f => (f && typeof f === "object" && "attributes" in f) ? (f.attributes ?? f) : f);
+      }
+
+      // Case 4: keyed object { "0": {...}, "1": {...} }
+      if (data && typeof data === "object") return Object.values(data);
+
+      return [];
+    }
+
     async function loadData(){
       els.status.textContent = "Loading inventory…";
 
-      const res = await fetch("./data/transformers2.json");
+      const res = await fetch("./data/transformers2.json", { cache: "no-store" });
       if(!res.ok){
-        els.status.textContent = "Could not load data/transformers2.json";
+        els.status.textContent = `Could not load ./data/transformers2.json (HTTP ${res.status})`;
         return;
       }
-      const data = await res.json();
 
-      // data may be an array OR {rows:[...]} depending on how you exported
-      const rows = Array.isArray(data) ? data : (Array.isArray(data.rows) ? data.rows : []);
+      const data = await res.json();
+      const rows = extractRows(data);
+
+      if(!rows.length){
+        els.status.textContent = "Loaded file but found 0 usable rows (check JSON structure).";
+        els.count.textContent = "";
+        return;
+      }
+
       state.all = rows;
       state.filtered = rows;
 
@@ -435,10 +452,7 @@
       state.filtered = state.all;
       renderTable();
     });
-    els.q.addEventListener("input", ()=>{
-      // live filter while typing (optional)
-      applyFilters();
-    });
+    els.q.addEventListener("input", applyFilters);
     els.btnTop.addEventListener("click", ()=>window.scrollTo({top:0, behavior:"smooth"}));
     els.btnPrint.addEventListener("click", ()=>window.print());
 
