@@ -21,7 +21,6 @@ function normalizeUpper(v) {
   return safeStr(v).toUpperCase();
 }
 
-// One place for "how fields should be displayed"
 const FIELD_RULES = {
   MFG:      { label: "Manufacturer", format: (v) => safeStr(v) },
   SERIAL:   { label: "Serial Number", format: (v) => safeStr(v) },
@@ -48,14 +47,12 @@ function formatField(key, value) {
 function statusClass(status) {
   const s = normalizeUpper(status);
 
-  // Primary statuses you care about
   if (s === "IN STOCK") return "status-green";
   if (s === "IN SERVICE") return "status-blue";
   if (s === "ON HOLD") return "status-amber";
   if (s === "NEEDS TESTED") return "status-orange";
   if (s === "SCRAPPED") return "status-red";
 
-  // Other known inventory-ish statuses you mentioned
   if (s === "NEEDS PAINTED") return "status-orange";
   if (s === "RECOVERED T.B.T." || s === "NEW T.B.T.") return "status-green";
 
@@ -80,7 +77,6 @@ const INVENTORY_STATUSES = [
   "NEEDS PAINTED"
 ].map(normalizeUpper);
 
-// State
 let allRows = [];
 let filteredRows = [];
 let selectedRow = null;
@@ -127,8 +123,7 @@ function setButtonsState() {
   btnViewEdit.disabled = !(filtersApplied && selectedRow);
 }
 function isInventoryRow(row) {
-  const s = normalizeUpper(row.STATUS);
-  return INVENTORY_STATUSES.includes(s);
+  return INVENTORY_STATUSES.includes(normalizeUpper(row.STATUS));
 }
 
 /* =========================
@@ -222,7 +217,6 @@ function openModalForRow(row) {
       }).join("")}
     </div>
   `;
-
   modal.classList.remove("hidden");
 }
 function closeModal() {
@@ -234,18 +228,19 @@ function closeModal() {
    ========================= */
 const REPORT_KEYS = ["MFG", "SERIAL", "IMP", "LOCATION", "STATUS", "REMARKS"];
 
-// Human-friendly criteria string from current dropdowns
-function getCriteriaSummary() {
-  const typeVal = elType.value || "Any";
-  const kvaVal  = elKva.value  || "Any";
-  const priVal  = elPri.value  || "Any";
-  const secVal  = elSec.value  || "Any";
-  return `Type=${typeVal}; KVA=${kvaVal}; Primary=${priVal}; Secondary=${secVal}`;
+function getCriteriaObject() {
+  return {
+    Type: elType.value || "Any",
+    KVA: elKva.value || "Any",
+    Primary: elPri.value || "Any",
+    Secondary: elSec.value || "Any",
+    Statuses: "Inventory (Available)"
+  };
 }
 
 function buildReportHtml(rows, title) {
   const now = new Date().toLocaleString();
-  const criteria = getCriteriaSummary();
+  const criteria = getCriteriaObject();
 
   const head = REPORT_KEYS.map(k => `<th>${FIELD_RULES[k]?.label || k}</th>`).join("");
   const body = rows.map(r => {
@@ -256,6 +251,10 @@ function buildReportHtml(rows, title) {
     return `<tr>${tds}</tr>`;
   }).join("");
 
+  const criteriaRows = Object.entries(criteria).map(([k,v]) => `
+    <div class="crit-row"><div class="crit-k">${k}</div><div class="crit-v">${v}</div></div>
+  `).join("");
+
   return `
 <!doctype html>
 <html>
@@ -263,23 +262,87 @@ function buildReportHtml(rows, title) {
   <meta charset="utf-8" />
   <title>${title}</title>
   <style>
-    body{ font-family: Cabin, Segoe UI, Arial, sans-serif; margin:18px; color:#111827; }
-    h1{ font-size:20px; margin:0 0 6px 0; font-weight:900; }
-    .meta{ font-size:12px; color:#6b7280; margin-bottom:10px; }
-    .criteria{
-      font-size:13px;
-      font-weight:800;
-      color:#0a2f60;
-      background:#f3f7ff;
-      border:1px solid #d6e4ff;
-      padding:10px 12px;
-      border-radius:12px;
-      margin: 10px 0 14px;
+    :root{
+      --blue:#0b3a78;
+      --blue2:#0a2f60;
+      --line:#d8e0ea;
+      --muted:#6b7280;
+      --bg:#f5f7fb;
     }
+    body{ font-family: Cabin, Segoe UI, Arial, sans-serif; margin:18px; color:#111827; background:#fff; }
+    .report-header{
+      border:1px solid var(--line);
+      border-radius:14px;
+      overflow:hidden;
+      margin-bottom:14px;
+    }
+    .report-topbar{
+      background:linear-gradient(180deg, var(--blue) 0%, var(--blue2) 100%);
+      color:#fff;
+      padding:12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .brand{
+      font-weight:900;
+      letter-spacing:.2px;
+      font-size:14px;
+      opacity:.95;
+    }
+    .dept{
+      font-size:12px;
+      opacity:.9;
+      margin-top:2px;
+    }
+    .report-title{
+      background:#fff;
+      padding:12px 14px 10px;
+      border-top:1px solid rgba(255,255,255,.18);
+    }
+    h1{ margin:0; font-size:20px; font-weight:900; color:#0b1220; }
+    .meta{ margin-top:6px; color:var(--muted); font-size:12px; display:flex; gap:14px; flex-wrap:wrap; }
+    .pill{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:6px 10px; border-radius:999px;
+      font-weight:900; font-size:12px;
+      border:1px solid var(--line);
+      background:var(--bg);
+      color:#111827;
+    }
+
+    .criteria-card{
+      margin:12px 14px 14px;
+      border:1px solid #d6e4ff;
+      background:#f3f7ff;
+      border-radius:12px;
+      padding:10px 12px;
+    }
+    .criteria-title{
+      font-weight:900;
+      color:#0a2f60;
+      margin-bottom:8px;
+      font-size:13px;
+    }
+    .crit-grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap:6px 12px;
+    }
+    .crit-row{ display:flex; gap:10px; align-items:baseline; }
+    .crit-k{ width:96px; font-weight:900; color:#0a2f60; font-size:12px; }
+    .crit-v{ font-size:12px; color:#111827; }
+
     table{ width:100%; border-collapse:collapse; }
     th{
-      background:#0b3a78; color:#fff; text-align:left;
-      font-size:12px; padding:8px; position:sticky; top:0;
+      background:var(--blue);
+      color:#fff;
+      text-align:left;
+      font-size:12px;
+      padding:8px;
+      position:sticky;
+      top:0;
     }
     td{
       padding:7px 8px;
@@ -294,7 +357,7 @@ function buildReportHtml(rows, title) {
       word-wrap:break-word;
     }
 
-    /* Inline copy of status pill styles for print window */
+    /* Status pills (match site) */
     .status-pill{
       display:inline-flex; align-items:center; justify-content:center;
       padding:6px 10px; border-radius:999px;
@@ -311,18 +374,42 @@ function buildReportHtml(rows, title) {
     @media print{
       body{ margin:10mm; }
       th{ position:static; }
+      .report-header{ break-inside:avoid; }
     }
   </style>
 </head>
 <body>
-  <h1>${title}</h1>
-  <div class="meta">Generated: ${now} • Records: ${rows.length}</div>
-  <div class="criteria">Criteria: ${criteria}</div>
+
+  <div class="report-header">
+    <div class="report-topbar">
+      <div>
+        <div class="brand">City of Cuyahoga Falls</div>
+        <div class="dept">Electric Department • Transformer Inventory</div>
+      </div>
+      <div class="pill">Inventory Listing</div>
+    </div>
+
+    <div class="report-title">
+      <h1>${title}</h1>
+      <div class="meta">
+        <div><strong>Generated:</strong> ${now}</div>
+        <div><strong>Records:</strong> ${rows.length}</div>
+      </div>
+    </div>
+
+    <div class="criteria-card">
+      <div class="criteria-title">Selection Criteria</div>
+      <div class="crit-grid">
+        ${criteriaRows}
+      </div>
+    </div>
+  </div>
 
   <table>
     <thead><tr>${head}</tr></thead>
     <tbody>${body}</tbody>
   </table>
+
 </body>
 </html>`;
 }
@@ -358,11 +445,7 @@ function showHelp() {
   alert(
 `Transformer Inventory Listing (Inventory Only)
 
-Inventory statuses included:
-IN STOCK, NEW T.B.T., RECOVERED T.B.T., NEEDS TESTED, ON HOLD, NEEDS PAINTED
-
-Status is shown with color badges to speed up scanning.
-Preview/Print include a Criteria line showing Type/KVA/Primary/Secondary.`
+Preview/Print now use a branded header + a structured criteria card.`
   );
 }
 
@@ -415,7 +498,7 @@ btnViewEdit.addEventListener("click", () => {
 });
 
 btnPreview.addEventListener("click", () => openReportWindow(false));
-btnPrint.addEventListener("click", () => openReportWindow(true));
+btnPrintbtnPrint && btnPrint.addEventListener("click", () => openReportWindow(true));
 
 btnQuit.addEventListener("click", () => {
   window.location.href = "./index.html";
