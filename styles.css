@@ -1,15 +1,16 @@
 :root{
-  --bg: #d8dbe2;
+  --bg: #d6d9e1;
   --card: #ffffff;
   --navy: #062a6b;
   --navy2: #041e4f;
-  --muted: #f2f3f6;
+  --muted: #eef1f6;
   --border: #c6cad6;
   --text: #111827;
   --subtle: #6b7280;
 }
 
 *{ box-sizing:border-box; }
+
 body{
   margin:0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -26,7 +27,7 @@ body{
 }
 
 .shell{
-  width: 720px;
+  width: 760px;
   background: var(--card);
   border-radius: 10px;
   box-shadow: 0 18px 50px rgba(0,0,0,.18);
@@ -35,12 +36,14 @@ body{
 
 .top-title{
   text-align:center;
-  font-weight:700;
+  font-weight:800;
   padding:14px 10px;
   border-bottom:1px solid var(--border);
   font-size:20px;
+  letter-spacing:.2px;
 }
 
+/* Header band */
 .hero{
   background: linear-gradient(180deg, var(--navy), var(--navy2));
   padding:18px 22px 16px;
@@ -48,8 +51,8 @@ body{
 
 .hero-title{
   color:#fff;
-  font-size:34px;
-  font-weight:800;
+  font-size:36px;
+  font-weight:900;
   letter-spacing:.2px;
   text-shadow: 0 2px 0 rgba(0,0,0,.25);
 }
@@ -61,9 +64,10 @@ body{
   font-size:18px;
 }
 
+/* Main content split */
 .content{
   display:grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 290px;
   gap:18px;
   padding:18px 18px 22px;
   background: #eef0f5;
@@ -81,17 +85,19 @@ body{
   gap:12px;
 }
 
+/* Right side disabled buttons */
 .ghost-btn{
   background:#fff;
   border:1px solid var(--border);
   padding:18px 14px;
   font-size:18px;
-  font-weight:700;
+  font-weight:800;
   color:#9aa0ad;
   border-radius:0;
   cursor:not-allowed;
 }
 
+/* Menu cards */
 .menu-item{
   display:flex;
   align-items:center;
@@ -128,10 +134,11 @@ body{
 
 .menu-title{
   font-size:20px;
-  font-weight:800;
-  line-height:1.1;
+  font-weight:900;
+  line-height:1.15;
 }
 
+/* Coming soon pill */
 .badge{
   margin-left:auto;
   background:#f4f6fb;
@@ -139,11 +146,11 @@ body{
   color:#6b7280;
   border-radius: 999px;
   padding:6px 10px;
-  font-weight:700;
+  font-weight:800;
   font-size:14px;
 }
 
-/* Disabled state (keep this for other “coming soon” items) */
+/* Disabled cards */
 .menu-item.disabled{
   opacity:.55;
   pointer-events:none;
@@ -151,28 +158,29 @@ body{
   background:#e6e8ef;
 }
 
-.footer-nav{
+/* Footer nav */
+.menu-footer{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:12px;
+  gap:10px;
   padding:14px 12px;
   border-top:1px solid var(--border);
   background:#fff;
 }
 
-.footer-nav a{
-  font-weight:800;
+.menu-footer-link{
+  font-weight:900;
   color: var(--navy);
   text-decoration:none;
   font-size:20px;
 }
 
-.footer-nav a:hover{
+.menu-footer-link:hover{
   text-decoration:underline;
 }
 
-.sep{
+.menu-footer-sep{
   color:#9aa0ad;
-  font-weight:700;
+  font-weight:800;
 }
