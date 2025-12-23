@@ -1,11 +1,14 @@
 const DATA_URL = "./data/transformers.json";
 
 /* =========================
-   CENTRALIZED FIELD RULES
+   CORE HELPERS
    ========================= */
 function safeStr(v) {
   if (v === null || v === undefined) return "";
   return String(v).trim();
+}
+function normalizeUpper(v) {
+  return safeStr(v).toUpperCase();
 }
 function toNumberOrNaN(v) {
   if (v === null || v === undefined || v === "") return NaN;
@@ -17,10 +20,10 @@ function fmtFixed(v, decimals) {
   if (Number.isNaN(n)) return safeStr(v);
   return n.toFixed(decimals);
 }
-function normalizeUpper(v) {
-  return safeStr(v).toUpperCase();
-}
 
+/* =========================
+   FIELD RULES (central)
+   ========================= */
 const FIELD_RULES = {
   MFG:      { label: "Manufacturer", format: (v) => safeStr(v) },
   SERIAL:   { label: "Serial Number", format: (v) => safeStr(v) },
@@ -42,7 +45,7 @@ function formatField(key, value) {
 }
 
 /* =========================
-   STATUS BADGE HELPERS
+   STATUS BADGES
    ========================= */
 function statusClass(status) {
   const s = normalizeUpper(status);
@@ -66,7 +69,7 @@ function renderStatusBadge(status) {
 }
 
 /* =========================
-   INVENTORY PAGE BEHAVIOR
+   INVENTORY FILTER
    ========================= */
 const INVENTORY_STATUSES = [
   "IN STOCK",
@@ -77,12 +80,13 @@ const INVENTORY_STATUSES = [
   "NEEDS PAINTED"
 ].map(normalizeUpper);
 
-let allRows = [];
-let filteredRows = [];
-let selectedRow = null;
-let filtersApplied = false;
+function isInventoryRow(row) {
+  return INVENTORY_STATUSES.includes(normalizeUpper(row.STATUS));
+}
 
-// Elements
+/* =========================
+   PAGE ELEMENTS
+   ========================= */
 const elType = document.getElementById("filter-type");
 const elKva  = document.getElementById("filter-kva");
 const elPri  = document.getElementById("filter-pri");
@@ -105,29 +109,42 @@ const modalBody    = document.getElementById("modal-body");
 const modalSubtitle= document.getElementById("modal-subtitle");
 
 /* =========================
+   STATE
+   ========================= */
+let allRows = [];
+let filteredRows = [];
+let selectedRow = null;
+let filtersApplied = false;
+
+/* =========================
    UI HELPERS
    ========================= */
 function uniqSorted(values) {
   return Array.from(new Set(values.map(safeStr).filter(v => v !== "")))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
+
 function populateSelect(selectEl, values, allLabel) {
   const opts = uniqSorted(values);
   selectEl.innerHTML =
     `<option value="">${allLabel}</option>` +
     opts.map(v => `<option value="${v}">${v}</option>`).join("");
 }
+
 function setButtonsState() {
   btnPreview.disabled = !filtersApplied;
   btnPrint.disabled = !filtersApplied;
   btnViewEdit.disabled = !(filtersApplied && selectedRow);
 }
-function isInventoryRow(row) {
-  return INVENTORY_STATUSES.includes(normalizeUpper(row.STATUS));
+
+function clearSelection() {
+  selectedRow = null;
+  document.querySelectorAll("tr.selected").forEach(x => x.classList.remove("selected"));
+  setButtonsState();
 }
 
 /* =========================
-   FILTERING
+   FILTERING + GRID
    ========================= */
 function applyFilters() {
   const typeVal = elType.value;
@@ -146,33 +163,25 @@ function applyFilters() {
   });
 
   filtersApplied = true;
-  selectedRow = null;
-  setButtonsState();
+  clearSelection();
   applySearchAndRender();
 }
 
 function applySearchAndRender() {
   const q = safeStr(elSearch.value).toLowerCase();
-
   const rows = (!q)
     ? filteredRows
-    : filteredRows.filter(r =>
-        Object.values(r).map(safeStr).join(" ").toLowerCase().includes(q)
-      );
+    : filteredRows.filter(r => Object.values(r).map(safeStr).join(" ").toLowerCase().includes(q));
 
   renderGrid(rows);
   elStatus.textContent = `Inventory records ${rows.length} (of ${allRows.length} total transformers)`;
 }
 
-/* =========================
-   GRID
-   ========================= */
 function renderGrid(rows) {
   tbody.innerHTML = "";
 
   if (!rows.length) {
-    tbody.innerHTML =
-      `<tr><td colspan="5" style="padding:14px;color:#5b677a;">No inventory records found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="padding:14px;color:#5b677a;">No inventory records found.</td></tr>`;
     return;
   }
 
@@ -206,15 +215,12 @@ function openModalForRow(row) {
 
   modalBody.innerHTML = `
     <div class="kv">
-      ${Object.keys(row).map(k => {
-        const val = formatField(k, row[k]);
-        return `
-          <div class="field">
-            <div class="label">${FIELD_RULES[k]?.label || k}</div>
-            <div class="value">${val || "—"}</div>
-          </div>
-        `;
-      }).join("")}
+      ${Object.keys(row).map(k => `
+        <div class="field">
+          <div class="label">${FIELD_RULES[k]?.label || k}</div>
+          <div class="value">${formatField(k, row[k]) || "—"}</div>
+        </div>
+      `).join("")}
     </div>
   `;
   modal.classList.remove("hidden");
@@ -224,7 +230,7 @@ function closeModal() {
 }
 
 /* =========================
-   REPORT (PREVIEW/PRINT)
+   REPORT (Branded + Friendly)
    ========================= */
 const REPORT_KEYS = ["MFG", "SERIAL", "IMP", "LOCATION", "STATUS", "REMARKS"];
 
@@ -262,55 +268,20 @@ function buildReportHtml(rows, title) {
   <meta charset="utf-8" />
   <title>${title}</title>
   <style>
-    :root{
-      --blue:#0b3a78;
-      --blue2:#0a2f60;
-      --line:#d8e0ea;
-      --muted:#6b7280;
-      --bg:#f5f7fb;
-    }
+    :root{ --blue:#0b3a78; --blue2:#0a2f60; --line:#d8e0ea; --muted:#6b7280; }
     body{ font-family: Cabin, Segoe UI, Arial, sans-serif; margin:18px; color:#111827; background:#fff; }
-    .report-header{
-      border:1px solid var(--line);
-      border-radius:14px;
-      overflow:hidden;
-      margin-bottom:14px;
-    }
+
+    .report-header{ border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-bottom:14px; }
     .report-topbar{
       background:linear-gradient(180deg, var(--blue) 0%, var(--blue2) 100%);
-      color:#fff;
-      padding:12px 14px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
+      color:#fff; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px;
     }
-    .brand{
-      font-weight:900;
-      letter-spacing:.2px;
-      font-size:14px;
-      opacity:.95;
-    }
-    .dept{
-      font-size:12px;
-      opacity:.9;
-      margin-top:2px;
-    }
-    .report-title{
-      background:#fff;
-      padding:12px 14px 10px;
-      border-top:1px solid rgba(255,255,255,.18);
-    }
+    .brand{ font-weight:900; letter-spacing:.2px; font-size:14px; opacity:.95; }
+    .dept{ font-size:12px; opacity:.9; margin-top:2px; }
+
+    .report-title{ background:#fff; padding:12px 14px 10px; }
     h1{ margin:0; font-size:20px; font-weight:900; color:#0b1220; }
     .meta{ margin-top:6px; color:var(--muted); font-size:12px; display:flex; gap:14px; flex-wrap:wrap; }
-    .pill{
-      display:inline-flex; align-items:center; justify-content:center;
-      padding:6px 10px; border-radius:999px;
-      font-weight:900; font-size:12px;
-      border:1px solid var(--line);
-      background:var(--bg);
-      color:#111827;
-    }
 
     .criteria-card{
       margin:12px 14px 14px;
@@ -319,51 +290,19 @@ function buildReportHtml(rows, title) {
       border-radius:12px;
       padding:10px 12px;
     }
-    .criteria-title{
-      font-weight:900;
-      color:#0a2f60;
-      margin-bottom:8px;
-      font-size:13px;
-    }
-    .crit-grid{
-      display:grid;
-      grid-template-columns: repeat(2, minmax(240px, 1fr));
-      gap:6px 12px;
-    }
+    .criteria-title{ font-weight:900; color:#0a2f60; margin-bottom:8px; font-size:13px; }
+    .crit-grid{ display:grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap:6px 12px; }
     .crit-row{ display:flex; gap:10px; align-items:baseline; }
     .crit-k{ width:96px; font-weight:900; color:#0a2f60; font-size:12px; }
     .crit-v{ font-size:12px; color:#111827; }
 
     table{ width:100%; border-collapse:collapse; }
-    th{
-      background:var(--blue);
-      color:#fff;
-      text-align:left;
-      font-size:12px;
-      padding:8px;
-      position:sticky;
-      top:0;
-    }
-    td{
-      padding:7px 8px;
-      border-bottom:1px solid #e5e7eb;
-      font-size:12px;
-      vertical-align:top;
-      white-space:nowrap;
-    }
-    td:last-child{
-      white-space:normal;
-      max-width:520px;
-      word-wrap:break-word;
-    }
+    th{ background:var(--blue); color:#fff; text-align:left; font-size:12px; padding:8px; position:sticky; top:0; }
+    td{ padding:7px 8px; border-bottom:1px solid #e5e7eb; font-size:12px; vertical-align:top; white-space:nowrap; }
+    td:last-child{ white-space:normal; max-width:520px; word-wrap:break-word; }
 
-    /* Status pills (match site) */
-    .status-pill{
-      display:inline-flex; align-items:center; justify-content:center;
-      padding:6px 10px; border-radius:999px;
-      font-weight:900; font-size:12px; letter-spacing:.02em;
-      border:1px solid #d8e0ea; background:#f7f9fc; color:#1f2937;
-    }
+    .status-pill{ display:inline-flex; align-items:center; justify-content:center; padding:6px 10px; border-radius:999px; font-weight:900; font-size:12px;
+      border:1px solid #d8e0ea; background:#f7f9fc; color:#1f2937; }
     .status-green{ background:#e8f7ee; border-color:#bfe7cd; color:#0f5132; }
     .status-blue{  background:#e8f1ff; border-color:#c9dcff; color:#0b3a78; }
     .status-amber{ background:#fff4d6; border-color:#ffe1a6; color:#7a4a00; }
@@ -386,7 +325,7 @@ function buildReportHtml(rows, title) {
         <div class="brand">City of Cuyahoga Falls</div>
         <div class="dept">Electric Department • Transformer Inventory</div>
       </div>
-      <div class="pill">Inventory Listing</div>
+      <div class="status-pill status-green">INVENTORY</div>
     </div>
 
     <div class="report-title">
@@ -399,9 +338,7 @@ function buildReportHtml(rows, title) {
 
     <div class="criteria-card">
       <div class="criteria-title">Selection Criteria</div>
-      <div class="crit-grid">
-        ${criteriaRows}
-      </div>
+      <div class="crit-grid">${criteriaRows}</div>
     </div>
   </div>
 
@@ -420,12 +357,9 @@ function openReportWindow(doPrint) {
   const q = safeStr(elSearch.value).toLowerCase();
   const rows = (!q)
     ? filteredRows
-    : filteredRows.filter(r =>
-        Object.values(r).map(safeStr).join(" ").toLowerCase().includes(q)
-      );
+    : filteredRows.filter(r => Object.values(r).map(safeStr).join(" ").toLowerCase().includes(q));
 
   const html = buildReportHtml(rows, "Transformer Inventory Listing");
-
   const w = window.open("", "_blank");
   if (!w) {
     alert("Popup blocked. Please allow popups for Preview/Print.");
@@ -442,11 +376,7 @@ function openReportWindow(doPrint) {
    HELP
    ========================= */
 function showHelp() {
-  alert(
-`Transformer Inventory Listing (Inventory Only)
-
-Preview/Print now use a branded header + a structured criteria card.`
-  );
+  alert("Inventory reports now use a branded header + structured criteria card.");
 }
 
 /* =========================
@@ -471,7 +401,6 @@ async function init() {
 
     elType.focus();
     applyFilters();
-
   } catch (err) {
     elStatus.textContent = `Failed to load data: ${err.message}`;
   }
@@ -481,9 +410,7 @@ btnApply.addEventListener("click", applyFilters);
 
 function markFiltersDirty() {
   filtersApplied = false;
-  selectedRow = null;
-  setButtonsState();
-  document.querySelectorAll("tr.selected").forEach(x => x.classList.remove("selected"));
+  clearSelection();
 }
 
 elType.addEventListener("change", markFiltersDirty);
@@ -496,18 +423,13 @@ elSearch.addEventListener("input", applySearchAndRender);
 btnViewEdit.addEventListener("click", () => {
   if (selectedRow) openModalForRow(selectedRow);
 });
-
 btnPreview.addEventListener("click", () => openReportWindow(false));
-btnPrintbtnPrint && btnPrint.addEventListener("click", () => openReportWindow(true));
+btnPrint.addEventListener("click", () => openReportWindow(true));
 
-btnQuit.addEventListener("click", () => {
-  window.location.href = "./index.html";
-});
+btnQuit.addEventListener("click", () => { window.location.href = "./index.html"; });
 
 modalClose.addEventListener("click", closeModal);
-modal.addEventListener("click", (e) => {
-  if (e.target === modal) closeModal();
-});
+modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
 if (btnHelp) btnHelp.addEventListener("click", showHelp);
 
