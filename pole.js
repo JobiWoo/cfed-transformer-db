@@ -1,212 +1,359 @@
+const DATA_URL = "./data/transformers.json";
+
+/* =========================
+   Helpers / formatting
+   ========================= */
+function safeStr(v) {
+  if (v === null || v === undefined) return "";
+  return String(v).trim();
+}
+function normalizePole(v) {
+  return safeStr(v).toUpperCase().replace(/\s+/g, "");
+}
+function normalizeStatus(v) {
+  return safeStr(v).toUpperCase();
+}
+function toNumberOrNaN(v) {
+  if (v === null || v === undefined || v === "") return NaN;
+  const n = Number(v);
+  return Number.isNaN(n) ? NaN : n;
+}
+function fmtFixed(v, decimals) {
+  const n = toNumberOrNaN(v);
+  if (Number.isNaN(n)) return safeStr(v);
+  return n.toFixed(decimals);
+}
+
+/* =========================
+   Status badge helpers
+   ========================= */
+function statusClass(status) {
+  const s = normalizeStatus(status);
+  if (s === "IN STOCK") return "status-green";
+  if (s === "IN SERVICE") return "status-blue";
+  if (s === "ON HOLD") return "status-amber";
+  if (s === "NEEDS TESTED") return "status-orange";
+  if (s === "SCRAPPED") return "status-red";
+  if (s === "NEEDS PAINTED") return "status-orange";
+  if (s === "RECOVERED T.B.T." || s === "NEW T.B.T.") return "status-green";
+  return "status-gray";
+}
+function renderStatusBadge(status) {
+  const text = safeStr(status) || "—";
+  const cls = statusClass(text);
+  return `<span class="status-pill ${cls}">${text}</span>`;
+}
+
+/* =========================
+   Elements / State
+   ========================= */
+let allRows = [];
+let selectedRow = null;
+
+const poleInput = document.getElementById("pole-input");
+const btnPoleSearch = document.getElementById("btn-pole-search");
+
+const btnViewEdit = document.getElementById("btn-viewedit");
+const btnPreview = document.getElementById("btn-preview");
+const btnQuit = document.getElementById("btn-quit");
+const btnHelp = document.getElementById("btn-help");
+
+const elStatus = document.getElementById("status");
+const tbody = document.getElementById("grid-body");
+
+const modal = document.getElementById("modal");
+const modalClose = document.getElementById("modal-close");
+const modalBody = document.getElementById("modal-body");
+const modalSubtitle = document.getElementById("modal-subtitle");
+
+/* =========================
+   UI helpers
+   ========================= */
+function beep() {
+  try { window.navigator.vibrate?.(80); } catch {}
+}
+function setButtonsInitial() {
+  btnViewEdit.disabled = true;
+  btnPreview.disabled = true;
+}
+function clearSelection() {
+  selectedRow = null;
+  btnViewEdit.disabled = true;
+  document.querySelectorAll("tr.selected").forEach(x => x.classList.remove("selected"));
+}
+function computeAddress(row) {
+  const hse = safeStr(row.HSE_NUM);
+  const street = safeStr(row.STREET);
+  const both = [hse, street].filter(Boolean).join(" ");
+  return both || "—";
+}
+function computeFeeder(row) {
+  return safeStr(row.FEEDER) || safeStr(row.Feeder) || "—";
+}
+
+/* =========================
+   Grid
+   ========================= */
+function renderGrid(rows) {
+  tbody.innerHTML = "";
+
+  if (!rows.length) {
+    tbody.innerHTML =
+      `<tr><td colspan="6" style="padding:14px;color:#5b677a;">No results.</td></tr>`;
+    return;
+  }
+
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+
+    const address = computeAddress(r);
+    const kva = safeStr(r.KVA);
+    const serial = safeStr(r.SERIAL);
+    const pri = safeStr(r.PRI_VOLT);
+    const sec = safeStr(r.SEC_VOLT);
+    const feeder = computeFeeder(r);
+
+    // Status badge shown next to feeder (no extra column needed)
+    const feederCell = `${feeder} <span style="margin-left:8px;">${renderStatusBadge(r.STATUS)}</span>`;
+
+    tr.innerHTML = `
+      <td title="${address}">${address}</td>
+      <td title="${kva}">${kva}</td>
+      <td title="${serial}">${serial}</td>
+      <td title="${pri}">${pri}</td>
+      <td title="${sec}">${sec}</td>
+      <td title="${feeder}">${feederCell}</td>
+    `;
+
+    tr.addEventListener("click", () => {
+      document.querySelectorAll("tr.selected").forEach(x => x.classList.remove("selected"));
+      tr.classList.add("selected");
+      selectedRow = r;
+      btnViewEdit.disabled = false;
+    });
+
+    tbody.appendChild(tr);
+  });
+}
+
+/* =========================
+   Search (Pole)
+   ========================= */
+function runPoleSearch() {
+  const inputRaw = poleInput.value;
+  const poleKey = normalizePole(inputRaw);
+
+  clearSelection();
+  btnPreview.disabled = true;
+
+  if (!poleKey) {
+    beep();
+    alert("Enter a Pole Number to search.");
+    poleInput.focus();
+    return;
+  }
+
+  const matches = allRows.filter(r => normalizePole(r.POLE_NO) === poleKey);
+
+  if (!matches.length) {
+    beep();
+    const poleCount = allRows.filter(r => safeStr(r.POLE_NO) !== "").length;
+
+    alert(
+      poleCount
+        ? "There is no such pole number in the database."
+        : "No POLE_NO values were found in the dataset. (Check transformers.json includes POLE_NO.)"
+    );
+
+    renderGrid([]);
+    elStatus.textContent = `No matches for: ${inputRaw}`;
+    poleInput.focus();
+    return;
+  }
+
+  btnPreview.disabled = false;
+  renderGrid(matches);
+  elStatus.textContent = `Pole ${inputRaw} • Matches: ${matches.length}`;
+}
+
+/* =========================
+   View/Edit modal (read-only)
+   ========================= */
+function openModalForRow(row) {
+  if (!row) return;
+
+  modalSubtitle.textContent =
+    `Trans_ID: ${safeStr(row.TRANS_ID) || "—"} • Pole: ${safeStr(row.POLE_NO) || "—"} • Status: ${safeStr(row.STATUS) || "—"}`;
+
+  modalBody.innerHTML = `
+    <div class="kv">
+      ${Object.keys(row).map(k => {
+        let val = safeStr(row[k]);
+        if (k === "IMP") val = fmtFixed(row[k], 2);
+        return `
+          <div class="field">
+            <div class="label">${k}</div>
+            <div class="value">${val || "—"}</div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  modal.classList.remove("hidden");
+}
+function closeModal() {
+  modal.classList.add("hidden");
+}
+
+/* =========================
+   Preview report
+   ========================= */
+function buildReportHtml(rows, poleLabel) {
+  const now = new Date().toLocaleString();
+
+  const head = `
+    <th>Address</th>
+    <th>KVA</th>
+    <th>Serial</th>
+    <th>Pri</th>
+    <th>Sec</th>
+    <th>Feeder</th>
+    <th>Status</th>
+  `;
+
+  const body = rows.map(r => {
+    const address = computeAddress(r);
+    const kva = safeStr(r.KVA);
+    const serial = safeStr(r.SERIAL);
+    const pri = safeStr(r.PRI_VOLT);
+    const sec = safeStr(r.SEC_VOLT);
+    const feeder = computeFeeder(r);
+    const status = renderStatusBadge(r.STATUS);
+
+    return `<tr>
+      <td>${address}</td>
+      <td>${kva}</td>
+      <td>${serial}</td>
+      <td>${pri}</td>
+      <td>${sec}</td>
+      <td>${feeder}</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join("");
+
+  return `
 <!doctype html>
-<html lang="en">
+<html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pole Search</title>
-  <link rel="stylesheet" href="./styles.css" />
-</head>
-
-<body>
-
-  <!-- HEADER -->
-  <header class="site-header">
-    <div class="site-topbar">
-      <div class="brand">
-        <div class="brand-title">City of Cuyahoga Falls</div>
-        <div class="brand-subtitle">Electric Department • Transformer Inventory</div>
-      </div>
-
-      <div class="top-actions">
-        <a class="link-btn" href="./index.html">Main Menu</a>
-        <a class="link-btn" href="./inventory.html">Inventory</a>
-        <a class="link-btn" href="./serial.html">Serial Search</a>
-        <a class="link-btn" href="./reports.html">Reports</a>
-      </div>
-    </div>
-
-    <div class="app-header">
-      <div class="app-title-row">
-        <h1 class="app-title">Pole Search</h1>
-        <div class="app-badge">Locate Transformers by Pole Number • Read-Only Demo</div>
-      </div>
-    </div>
-  </header>
-
-  <!-- MAIN CONTENT -->
-  <main class="layout">
-    <section class="grid-panel">
-
-      <!-- Search bar -->
-      <div class="grid-toolbar">
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width:100%;">
-          <div class="status" style="font-weight:900;">Enter Pole Number For Search</div>
-
-          <input
-            id="pole-input"
-            class="search"
-            type="search"
-            placeholder="e.g. M12345 or O75498"
-            style="min-width:260px;"
-          />
-
-          <button id="pole-search" class="btn btn-primary btn-small" type="button">Search</button>
-        </div>
-
-        <div id="status" class="status">Ready.</div>
-      </div>
-
-      <!-- Results table -->
-      <div class="grid-wrap">
-        <table class="grid" id="grid" aria-label="Pole Search Results">
-          <thead>
-            <tr>
-              <th>Manufacturer</th>
-              <th>Serial</th>
-              <th>Status</th>
-              <th>Location</th>
-              <th>Pole</th>
-            </tr>
-          </thead>
-          <tbody id="grid-body"></tbody>
-        </table>
-      </div>
-
-      <div class="hint">
-        Tip: Select a row, then use View/Edit to open the transformer details.
-      </div>
-
-    </section>
-
-    <!-- RIGHT BUTTON BAR -->
-    <aside class="button-bar">
-      <button id="btn-viewedit" class="btn btn-icon" disabled type="button">
-        <span class="icon">✎</span>
-        <span>View/Edit</span>
-      </button>
-
-      <button id="btn-preview" class="btn btn-icon" disabled type="button">
-        <span class="icon">🔍</span>
-        <span>Preview</span>
-      </button>
-
-      <button id="btn-print" class="btn btn-icon" disabled type="button">
-        <span class="icon">🖨️</span>
-        <span>Print</span>
-      </button>
-
-      <button id="btn-quit" class="btn btn-icon" type="button">
-        <span class="icon">⏻</span>
-        <span>Quit</span>
-      </button>
-    </aside>
-  </main>
-
-  <!-- VIEW / EDIT MODAL -->
-  <div id="modal" class="modal hidden" aria-hidden="true">
-    <div class="modal-card">
-      <div class="modal-header">
-        <div>
-          <div class="modal-title">View / Edit Transformer</div>
-          <div id="modal-subtitle" class="modal-subtitle"></div>
-        </div>
-        <button id="modal-close" class="btn btn-small" type="button">Close</button>
-      </div>
-
-      <div id="modal-body" class="modal-body"></div>
-
-      <div class="modal-footer">
-        <!-- ✅ NEW: obvious iPad-friendly back button at the bottom -->
-        <button id="modal-back" class="btn btn-primary" type="button">
-          Back to Results
-        </button>
-
-        <div class="note" style="margin-top:10px;">
-          GitHub Pages demo is read-only.
-          Future versions will connect directly to SQL Server.
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- iPad-friendly modal behavior (bottom-sheet style) -->
+  <title>Transformers By Pole Number</title>
   <style>
-    #modal.hidden{ display:none !important; }
+    body{ font-family: Cabin, Segoe UI, Arial, sans-serif; margin:18px; color:#111827; }
+    h1{ font-size:20px; margin:0 0 6px 0; font-weight:900; }
+    .meta{ font-size:12px; color:#6b7280; margin-bottom:12px; }
+    table{ width:100%; border-collapse:collapse; }
+    th{ background:#0b3a78; color:#fff; text-align:left; font-size:12px; padding:8px; position:sticky; top:0; }
+    td{ padding:7px 8px; border-bottom:1px solid #e5e7eb; font-size:12px; white-space:nowrap; }
 
-    #modal{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.46);
-      display:flex;
-      align-items:center;      /* desktop */
-      justify-content:center;  /* desktop */
-      padding:18px;
-      z-index:9999;
+    .status-pill{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:6px 10px; border-radius:999px;
+      font-weight:900; font-size:12px; letter-spacing:.02em;
+      border:1px solid #d8e0ea; background:#f7f9fc; color:#1f2937;
     }
+    .status-green{ background:#e8f7ee; border-color:#bfe7cd; color:#0f5132; }
+    .status-blue{  background:#e8f1ff; border-color:#c9dcff; color:#0b3a78; }
+    .status-amber{ background:#fff4d6; border-color:#ffe1a6; color:#7a4a00; }
+    .status-orange{background:#ffedd5; border-color:#ffd6a1; color:#7a2f00; }
+    .status-red{   background:#fde8e8; border-color:#f5bebe; color:#7a1111; }
+    .status-gray{  background:#f1f5f9; border-color:#d5dde7; color:#334155; }
 
-    #modal .modal-card{
-      width:min(1020px, 95vw);
-      max-height:82vh;
-      display:flex;
-      flex-direction:column;
-      background:var(--panel, #fff);
-      border-radius:16px;
-      box-shadow: 0 18px 55px rgba(0,0,0,.25);
-      border:1px solid var(--line, #d8e0ea);
-      overflow:hidden;
-    }
-
-    #modal .modal-body{
-      overflow:auto;
-      padding:14px;
-    }
-
-    #modal .modal-footer{
-      border-top:1px solid var(--line, #d8e0ea);
-      background:#fbfdff;
-      padding:12px 14px;
-    }
-
-    @media (max-width: 980px){
-      #modal{
-        align-items:flex-end;
-        justify-content:center;
-        padding:0;
-      }
-      #modal .modal-card{
-        width:100vw;
-        max-height:86vh;
-        border-radius:16px 16px 0 0;
-      }
-    }
+    @media print{ body{ margin:10mm; } th{ position:static; } }
   </style>
-
-  <!-- Your existing pole logic -->
-  <script src="./pole.js"></script>
-
-  <!-- Wiring: Back button + backdrop close (does not replace pole.js) -->
-  <script>
-    (function(){
-      const modal = document.getElementById("modal");
-      const closeBtn = document.getElementById("modal-close");
-      const backBtn  = document.getElementById("modal-back");
-
-      if(!modal) return;
-
-      function closeModal(){
-        modal.classList.add("hidden");
-        modal.setAttribute("aria-hidden","true");
-      }
-
-      if(closeBtn) closeBtn.addEventListener("click", closeModal);
-      if(backBtn)  backBtn.addEventListener("click", closeModal);
-
-      // Tap outside the card closes (iPad-friendly)
-      modal.addEventListener("click", (e)=>{
-        if(e.target === modal) closeModal();
-      });
-    })();
-  </script>
-
+</head>
+<body>
+  <h1>Transformers By Pole Number</h1>
+  <div class="meta">Pole: ${poleLabel} • Generated: ${now} • Records: ${rows.length}</div>
+  <table>
+    <thead><tr>${head}</tr></thead>
+    <tbody>${body}</tbody>
+  </table>
 </body>
-</html>
+</html>`;
+}
+
+function openPreview() {
+  if (btnPreview.disabled) return;
+
+  const poleLabel = safeStr(poleInput.value) || "—";
+  const poleKey = normalizePole(poleInput.value);
+  const rows = allRows.filter(r => normalizePole(r.POLE_NO) === poleKey);
+
+  const html = buildReportHtml(rows, poleLabel);
+  const w = window.open("", "_blank");
+  if (!w) {
+    alert("Popup blocked. Please allow popups.");
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+/* =========================
+   Help / init / events
+   ========================= */
+function showHelp() {
+  alert(
+`Transformers By Pole Number
+
+• Enter a pole number and click Search (or press Enter)
+• Status is shown as a color badge next to the feeder
+• Preview includes Status as well
+
+Read-only for now; later will save to SQL Server.`
+  );
+}
+
+async function init() {
+  try {
+    const res = await fetch(DATA_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    allRows = await res.json();
+
+    const withPoles = allRows.filter(r => safeStr(r.POLE_NO) !== "").length;
+    elStatus.textContent = `Loaded ${allRows.length} transformers • ${withPoles} have pole numbers`;
+
+    setButtonsInitial();
+    poleInput.focus();
+  } catch (err) {
+    elStatus.textContent = `Failed to load data: ${err.message}`;
+    setButtonsInitial();
+  }
+}
+
+btnPoleSearch.addEventListener("click", runPoleSearch);
+poleInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") runPoleSearch();
+});
+
+btnViewEdit.addEventListener("click", () => {
+  if (selectedRow) openModalForRow(selectedRow);
+});
+
+btnPreview.addEventListener("click", openPreview);
+
+btnQuit.addEventListener("click", () => {
+  window.location.href = "./index.html";
+});
+
+modalClose.addEventListener("click", closeModal);
+modal.addEventListener("click", (e) => {
+  if (e.target === modal) closeModal();
+});
+
+if (btnHelp) btnHelp.addEventListener("click", showHelp);
+
+init();
