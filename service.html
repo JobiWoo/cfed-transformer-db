@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Transformers In Service</title>
+  <title>Search By Serial Number</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 
@@ -20,7 +20,6 @@
       <div class="top-actions">
         <a class="link-btn" href="./index.html">Main Menu</a>
         <a class="link-btn" href="./inventory.html">Inventory</a>
-        <a class="link-btn" href="./serial.html">Serial Search</a>
         <a class="link-btn" href="./pole.html">Pole Search</a>
         <a class="link-btn" href="./reports.html">Reports</a>
       </div>
@@ -28,8 +27,8 @@
 
     <div class="app-header">
       <div class="app-title-row">
-        <h1 class="app-title">Transformers In Service</h1>
-        <div class="app-badge">Read-Only Demo</div>
+        <h1 class="app-title">Search By Serial Number</h1>
+        <div class="app-badge">Tabbed Record View • Read-Only Demo</div>
       </div>
     </div>
   </header>
@@ -38,33 +37,40 @@
   <main class="layout">
     <section class="grid-panel">
 
+      <!-- Search bar -->
       <div class="grid-toolbar">
-        <input
-          id="search"
-          class="search"
-          type="search"
-          placeholder="Search in-service transformers…"
-        />
-        <div id="status" class="status">Loading…</div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width:100%;">
+          <div class="status" style="font-weight:900;">Enter Serial Number For Search</div>
+          <input
+            id="serial-input"
+            class="search"
+            type="search"
+            placeholder="e.g. 2246025 (no CP prefix)"
+            style="min-width:260px;"
+          />
+          <button id="serial-search" class="btn btn-primary btn-small" type="button">Search</button>
+        </div>
+
+        <div id="status" class="status">Ready.</div>
       </div>
 
-      <div class="grid-wrap">
-        <table class="grid" id="grid" aria-label="Transformers In Service">
-          <thead>
-            <tr>
-              <th>Manufacturer</th>
-              <th>Serial</th>
-              <th>Status</th>
-              <th>Feeder</th>
-              <th>Pole</th>
-            </tr>
-          </thead>
-          <tbody id="grid-body"></tbody>
-        </table>
+      <!-- Tabs + Form output area (serial.js will populate) -->
+      <div class="serial-form" id="serial-form">
+        <div class="tabs" id="tabs">
+          <button class="tab active" data-tab="status">Status &amp; Location</button>
+          <button class="tab" data-tab="nameplate">Nameplate Information</button>
+          <button class="tab" data-tab="test">Test Results</button>
+          <button class="tab" data-tab="inventory">Inventory Information</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-status"></div>
+        <div class="tab-panel" id="tab-nameplate"></div>
+        <div class="tab-panel" id="tab-test"></div>
+        <div class="tab-panel" id="tab-inventory"></div>
       </div>
 
       <div class="hint">
-        Tip: Select a row, then use View/Edit to open transformer details.
+        Tip: Search by serial number. Tabs will populate when a match is found.
       </div>
 
     </section>
@@ -93,7 +99,7 @@
     </aside>
   </main>
 
-  <!-- VIEW / EDIT MODAL -->
+  <!-- VIEW / EDIT MODAL (same IDs as inventory so JS patterns stay consistent) -->
   <div id="modal" class="modal hidden" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
@@ -128,8 +134,8 @@
       inset:0;
       background:rgba(0,0,0,.46);
       display:flex;
-      align-items:center;
-      justify-content:center;
+      align-items:center;      /* desktop */
+      justify-content:center;  /* desktop */
       padding:18px;
       z-index:9999;
     }
@@ -171,8 +177,31 @@
     }
   </style>
 
-  <!-- NEW working service logic -->
-  <script src="./service.js"></script>
+  <!-- Your existing serial logic -->
+  <script src="./serial.js"></script>
+
+  <!-- Wiring: Back button + backdrop close (does not replace serial.js) -->
+  <script>
+    (function(){
+      const modal = document.getElementById("modal");
+      const closeBtn = document.getElementById("modal-close");
+      const backBtn  = document.getElementById("modal-back");
+
+      if(!modal) return;
+
+      function closeModal(){
+        modal.classList.add("hidden");
+        modal.setAttribute("aria-hidden","true");
+      }
+
+      if(closeBtn) closeBtn.addEventListener("click", closeModal);
+      if(backBtn)  backBtn.addEventListener("click", closeModal);
+
+      modal.addEventListener("click", (e)=>{
+        if(e.target === modal) closeModal();
+      });
+    })();
+  </script>
 
 </body>
 </html>
