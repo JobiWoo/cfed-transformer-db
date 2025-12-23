@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Transformer Inventory • Reports</title>
   <link rel="stylesheet" href="./css/cfed.css" />
+  <style>
+    /* Center single card nicely on wide screens */
+    .grid { grid-template-columns: 1fr; }
+    .card { max-width: 760px; margin: 0 auto; }
+  </style>
 </head>
 <body>
   <div class="app">
@@ -19,7 +24,10 @@
       <div class="grid">
         <div class="card">
           <div class="h2">Available Reports</div>
-          <div class="small">These reports are generated from the exported feeder analysis dataset used by the legacy Access report.</div>
+          <div class="small">
+            Select a report below.
+          </div>
+
           <div style="height:12px"></div>
 
           <button class="btn" onclick="location.href='./feeder-analysis.html'">
@@ -45,26 +53,6 @@
             <div>Overhead Transformers on 4kV Feeders</div>
             <div class="badge">Coming soon</div>
           </button>
-        </div>
-
-        <div class="card">
-          <div class="h2">Notes</div>
-          <div class="small">
-            <ul>
-              <li>This site is static (GitHub Pages). Data is read from <code>/data</code> as JSON/CSV.</li>
-              <li>No direct SQL connections from the browser.</li>
-              <li>For accuracy, replace <code>data/feeder_analysis_table.json</code> with the latest export when needed.</li>
-              <li>Use the print button inside each report to generate a PDF.</li>
-            </ul>
-          </div>
-
-          <div style="height:12px"></div>
-
-          <div class="h2">Add this to your home page</div>
-          <div class="small">
-            If your <code>index.html</code> has a “Report Menu” button, point it to:<br/>
-            <code>./reports.html</code>
-          </div>
         </div>
       </div>
     </div>
