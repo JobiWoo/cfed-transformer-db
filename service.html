@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>In Service</title>
+  <title>Transformers In Service</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 
@@ -38,7 +38,7 @@
   <main class="layout">
     <section class="grid-panel">
 
-      <!-- Search bar / status row -->
+      <!-- Toolbar row (service.js typically expects #search and #status) -->
       <div class="grid-toolbar">
         <input
           id="search"
@@ -49,9 +49,9 @@
         <div id="status" class="status">Loading…</div>
       </div>
 
-      <!-- Results table -->
       <div class="grid-wrap">
-        <table class="grid" id="grid" aria-label="In Service Transformers">
+        <!-- Keep IDs consistent with your other pages -->
+        <table class="grid" id="grid" aria-label="Transformers In Service">
           <thead>
             <tr>
               <th>Manufacturer</th>
@@ -109,7 +109,6 @@
       <div id="modal-body" class="modal-body"></div>
 
       <div class="modal-footer">
-        <!-- ✅ NEW: obvious iPad-friendly back button at the bottom -->
         <button id="modal-back" class="btn btn-primary" type="button">
           Back to Results
         </button>
@@ -194,7 +193,6 @@
       if(closeBtn) closeBtn.addEventListener("click", closeModal);
       if(backBtn)  backBtn.addEventListener("click", closeModal);
 
-      // Tap outside the card closes (iPad-friendly)
       modal.addEventListener("click", (e)=>{
         if(e.target === modal) closeModal();
       });
