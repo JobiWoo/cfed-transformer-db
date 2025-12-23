@@ -38,7 +38,6 @@
   <main class="layout">
     <section class="grid-panel">
 
-      <!-- Toolbar row (service.js typically expects #search and #status) -->
       <div class="grid-toolbar">
         <input
           id="search"
@@ -50,7 +49,6 @@
       </div>
 
       <div class="grid-wrap">
-        <!-- Keep IDs consistent with your other pages -->
         <table class="grid" id="grid" aria-label="Transformers In Service">
           <thead>
             <tr>
@@ -130,8 +128,8 @@
       inset:0;
       background:rgba(0,0,0,.46);
       display:flex;
-      align-items:center;      /* desktop */
-      justify-content:center;  /* desktop */
+      align-items:center;
+      justify-content:center;
       padding:18px;
       z-index:9999;
     }
@@ -173,31 +171,8 @@
     }
   </style>
 
-  <!-- Your existing service logic -->
+  <!-- NEW working service logic -->
   <script src="./service.js"></script>
-
-  <!-- Wiring: Back button + backdrop close (does not replace service.js) -->
-  <script>
-    (function(){
-      const modal = document.getElementById("modal");
-      const closeBtn = document.getElementById("modal-close");
-      const backBtn  = document.getElementById("modal-back");
-
-      if(!modal) return;
-
-      function closeModal(){
-        modal.classList.add("hidden");
-        modal.setAttribute("aria-hidden","true");
-      }
-
-      if(closeBtn) closeBtn.addEventListener("click", closeModal);
-      if(backBtn)  backBtn.addEventListener("click", closeModal);
-
-      modal.addEventListener("click", (e)=>{
-        if(e.target === modal) closeModal();
-      });
-    })();
-  </script>
 
 </body>
 </html>
