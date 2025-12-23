@@ -7,14 +7,45 @@ function safeStr(v) {
   if (v === null || v === undefined) return "";
   return String(v).trim();
 }
+function toNumberOrNaN(v) {
+  if (v === null || v === undefined || v === "") return NaN;
+  const n = Number(v);
+  return Number.isNaN(n) ? NaN : n;
+}
+function fmtEpochMs(v) {
+  if (v === null || v === undefined || v === "") return "";
+  const n = toNumberOrNaN(v);
+  if (Number.isNaN(n)) return safeStr(v);
+  if (n > 300000000000) {
+    const d = new Date(n);
+    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString();
+  }
+  return safeStr(v);
+}
+function uniqSorted(values) {
+  return Array.from(new Set(values.map(safeStr).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+function populateSelect(selectEl, values, allLabel) {
+  const opts = uniqSorted(values);
+  selectEl.innerHTML =
+    `<option value="">${allLabel}</option>` +
+    opts.map(v => `<option value="${v}">${v}</option>`).join("");
+}
+function computeAddress(row) {
+  const hse = safeStr(row.HSE_NUM);
+  const street = safeStr(row.STREET);
+  const both = [hse, street].filter(Boolean).join(" ");
+  return both || "—";
+}
+function computeFeeder(row) {
+  return safeStr(row.FEEDER) || safeStr(row.Feeder) || "—";
+}
 
+/* =========================
+   Robust status normalization
+   ========================= */
 function normalizeStatus(v) {
-  // Robust normalization:
-  // - trim
-  // - uppercase
-  // - replace hyphen/underscore with space
-  // - remove periods
-  // - collapse multiple spaces
   return safeStr(v)
     .toUpperCase()
     .replace(/[-_]/g, " ")
@@ -23,66 +54,14 @@ function normalizeStatus(v) {
     .trim();
 }
 
-function toNumberOrNaN(v) {
-  if (v === null || v === undefined || v === "") return NaN;
-  const n = Number(v);
-  return Number.isNaN(n) ? NaN : n;
-}
-
-function fmtEpochMs(v) {
-  if (v === null || v === undefined || v === "") return "";
-  const n = toNumberOrNaN(v);
-  if (Number.isNaN(n)) return safeStr(v);
-
-  // heuristic: ms timestamps are large
-  if (n > 300000000000) {
-    const d = new Date(n);
-    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString();
-  }
-  return safeStr(v);
-}
-
-function uniqSorted(values) {
-  return Array.from(new Set(values.map(safeStr).filter(Boolean)))
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-}
-
-function populateSelect(selectEl, values, allLabel) {
-  const opts = uniqSorted(values);
-  selectEl.innerHTML =
-    `<option value="">${allLabel}</option>` +
-    opts.map(v => `<option value="${v}">${v}</option>`).join("");
-}
-
-function computeAddress(row) {
-  const hse = safeStr(row.HSE_NUM);
-  const street = safeStr(row.STREET);
-  const both = [hse, street].filter(Boolean).join(" ");
-  return both || "—";
-}
-
-function computeFeeder(row) {
-  return safeStr(row.FEEDER) || safeStr(row.Feeder) || "—";
-}
-
 /* =========================
    Status badge helpers
    ========================= */
 function statusClass(status) {
   const s = normalizeStatus(status);
-
-  if (s === "IN STOCK") return "status-green";
   if (s === "IN SERVICE") return "status-blue";
-  if (s === "ON HOLD") return "status-amber";
-  if (s === "NEEDS TESTED") return "status-orange";
-  if (s === "SCRAPPED") return "status-red";
-
-  if (s === "NEEDS PAINTED") return "status-orange";
-  if (s === "RECOVERED TBT" || s === "RECOVERED T B T" || s === "NEW TBT" || s === "NEW T B T") return "status-green";
-
   return "status-gray";
 }
-
 function renderStatusBadge(status) {
   const text = safeStr(status) || "—";
   const cls = statusClass(text);
@@ -125,7 +104,7 @@ let selectedRow = null;
 let filtersApplied = false;
 
 /* =========================
-   UI State
+   UI state
    ========================= */
 function setButtonsState() {
   btnPreview.disabled = !filtersApplied;
@@ -143,7 +122,6 @@ function clearSelection() {
    ========================= */
 function renderGrid(rows) {
   tbody.innerHTML = "";
-
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="4" style="padding:14px;color:#5b677a;">No records found.</td></tr>`;
     return;
@@ -156,10 +134,8 @@ function renderGrid(rows) {
     const dateInstalled = fmtEpochMs(r.DATE_INSTALLED);
     const serial = safeStr(r.SERIAL);
 
-    const feederCell = `${feeder} <span style="margin-left:8px;">${renderStatusBadge(r.STATUS)}</span>`;
-
     tr.innerHTML = `
-      <td title="${feeder}">${feederCell}</td>
+      <td title="${feeder}">${feeder}</td>
       <td title="${address}">${address}</td>
       <td title="${dateInstalled}">${dateInstalled || "—"}</td>
       <td title="${serial}">${serial}</td>
@@ -201,15 +177,13 @@ function applyFilters() {
 
 function applySearchAndRender() {
   const q = safeStr(elSearch.value).toLowerCase();
-
   const rows = (!q)
     ? filteredRows
     : filteredRows.filter(r =>
         Object.values(r).map(safeStr).join(" ").toLowerCase().includes(q)
       );
-
   renderGrid(rows);
-  elStatus.textContent = `In Service records ${rows.length} (IN SERVICE base: ${baseRows.length} • total: ${allRows.length})`;
+  elStatus.textContent = `In Service records ${rows.length} (base: ${baseRows.length} • total: ${allRows.length})`;
 }
 
 function markFiltersDirty() {
@@ -237,7 +211,6 @@ function openModalForRow(row) {
       `).join("")}
     </div>
   `;
-
   modal.classList.remove("hidden");
 }
 function closeModal() {
@@ -245,10 +218,21 @@ function closeModal() {
 }
 
 /* =========================
-   Preview / Print
+   Branded report header (Option B)
    ========================= */
+function getCriteriaObject() {
+  return {
+    Type: elType.value || "Any",
+    KVA: elKva.value || "Any",
+    Primary: elPri.value || "Any",
+    Secondary: elSec.value || "Any",
+    Status: "IN SERVICE"
+  };
+}
+
 function buildReportHtml(rows, title) {
   const now = new Date().toLocaleString();
+  const criteria = getCriteriaObject();
 
   const head = `
     <th>Feeder</th>
@@ -263,7 +247,6 @@ function buildReportHtml(rows, title) {
     const address = computeAddress(r);
     const dateInstalled = fmtEpochMs(r.DATE_INSTALLED);
     const serial = safeStr(r.SERIAL);
-
     return `<tr>
       <td>${feeder}</td>
       <td>${renderStatusBadge(r.STATUS)}</td>
@@ -273,6 +256,10 @@ function buildReportHtml(rows, title) {
     </tr>`;
   }).join("");
 
+  const criteriaRows = Object.entries(criteria).map(([k,v]) => `
+    <div class="crit-row"><div class="crit-k">${k}</div><div class="crit-v">${v}</div></div>
+  `).join("");
+
   return `
 <!doctype html>
 <html>
@@ -280,12 +267,77 @@ function buildReportHtml(rows, title) {
   <meta charset="utf-8" />
   <title>${title}</title>
   <style>
-    body{ font-family: Cabin, Segoe UI, Arial, sans-serif; margin:18px; color:#111827; }
-    h1{ font-size:20px; margin:0 0 6px 0; font-weight:900; }
-    .meta{ font-size:12px; color:#6b7280; margin-bottom:12px; }
+    :root{
+      --blue:#0b3a78;
+      --blue2:#0a2f60;
+      --line:#d8e0ea;
+      --muted:#6b7280;
+      --bg:#f5f7fb;
+    }
+    body{ font-family: Cabin, Segoe UI, Arial, sans-serif; margin:18px; color:#111827; background:#fff; }
+    .report-header{
+      border:1px solid var(--line);
+      border-radius:14px;
+      overflow:hidden;
+      margin-bottom:14px;
+    }
+    .report-topbar{
+      background:linear-gradient(180deg, var(--blue) 0%, var(--blue2) 100%);
+      color:#fff;
+      padding:12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .brand{ font-weight:900; letter-spacing:.2px; font-size:14px; opacity:.95; }
+    .dept{ font-size:12px; opacity:.9; margin-top:2px; }
+    .report-title{
+      background:#fff;
+      padding:12px 14px 10px;
+      border-top:1px solid rgba(255,255,255,.18);
+    }
+    h1{ margin:0; font-size:20px; font-weight:900; color:#0b1220; }
+    .meta{ margin-top:6px; color:var(--muted); font-size:12px; display:flex; gap:14px; flex-wrap:wrap; }
+
+    .criteria-card{
+      margin:12px 14px 14px;
+      border:1px solid #d6e4ff;
+      background:#f3f7ff;
+      border-radius:12px;
+      padding:10px 12px;
+    }
+    .criteria-title{
+      font-weight:900;
+      color:#0a2f60;
+      margin-bottom:8px;
+      font-size:13px;
+    }
+    .crit-grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap:6px 12px;
+    }
+    .crit-row{ display:flex; gap:10px; align-items:baseline; }
+    .crit-k{ width:96px; font-weight:900; color:#0a2f60; font-size:12px; }
+    .crit-v{ font-size:12px; color:#111827; }
+
     table{ width:100%; border-collapse:collapse; }
-    th{ background:#0b3a78; color:#fff; text-align:left; font-size:12px; padding:8px; position:sticky; top:0; }
-    td{ padding:7px 8px; border-bottom:1px solid #e5e7eb; font-size:12px; white-space:nowrap; }
+    th{
+      background:var(--blue);
+      color:#fff;
+      text-align:left;
+      font-size:12px;
+      padding:8px;
+      position:sticky;
+      top:0;
+    }
+    td{
+      padding:7px 8px;
+      border-bottom:1px solid #e5e7eb;
+      font-size:12px;
+      white-space:nowrap;
+    }
 
     .status-pill{
       display:inline-flex; align-items:center; justify-content:center;
@@ -293,23 +345,48 @@ function buildReportHtml(rows, title) {
       font-weight:900; font-size:12px; letter-spacing:.02em;
       border:1px solid #d8e0ea; background:#f7f9fc; color:#1f2937;
     }
-    .status-green{ background:#e8f7ee; border-color:#bfe7cd; color:#0f5132; }
     .status-blue{  background:#e8f1ff; border-color:#c9dcff; color:#0b3a78; }
-    .status-amber{ background:#fff4d6; border-color:#ffe1a6; color:#7a4a00; }
-    .status-orange{background:#ffedd5; border-color:#ffd6a1; color:#7a2f00; }
-    .status-red{   background:#fde8e8; border-color:#f5bebe; color:#7a1111; }
     .status-gray{  background:#f1f5f9; border-color:#d5dde7; color:#334155; }
 
-    @media print{ body{ margin:10mm; } th{ position:static; } }
+    @media print{
+      body{ margin:10mm; }
+      th{ position:static; }
+      .report-header{ break-inside:avoid; }
+    }
   </style>
 </head>
 <body>
-  <h1>${title}</h1>
-  <div class="meta">Status: IN SERVICE • Generated: ${now} • Records: ${rows.length}</div>
+
+  <div class="report-header">
+    <div class="report-topbar">
+      <div>
+        <div class="brand">City of Cuyahoga Falls</div>
+        <div class="dept">Electric Department • Transformer Inventory</div>
+      </div>
+      ${renderStatusBadge("IN SERVICE")}
+    </div>
+
+    <div class="report-title">
+      <h1>${title}</h1>
+      <div class="meta">
+        <div><strong>Generated:</strong> ${now}</div>
+        <div><strong>Records:</strong> ${rows.length}</div>
+      </div>
+    </div>
+
+    <div class="criteria-card">
+      <div class="criteria-title">Selection Criteria</div>
+      <div class="crit-grid">
+        ${criteriaRows}
+      </div>
+    </div>
+  </div>
+
   <table>
     <thead><tr>${head}</tr></thead>
     <tbody>${body}</tbody>
   </table>
+
 </body>
 </html>`;
 }
@@ -341,14 +418,7 @@ function openReportWindow(doPrint) {
    Help
    ========================= */
 function showHelp() {
-  alert(
-`Transformers In Service Listing
-
-This page shows ONLY transformers with Status = IN SERVICE.
-If the list is empty, it usually means the status text in data isn't matching.
-
-This version uses robust matching (case/spacing/punctuation tolerant).`
-  );
+  alert(`In Service reports now use a branded header + criteria card.`);
 }
 
 /* =========================
@@ -409,4 +479,3 @@ modal.addEventListener("click", (e) => {
 if (btnHelp) btnHelp.addEventListener("click", showHelp);
 
 init();
-
