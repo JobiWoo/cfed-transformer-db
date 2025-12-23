@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Search By Serial Number</title>
+  <title>In Service</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 
@@ -20,6 +20,7 @@
       <div class="top-actions">
         <a class="link-btn" href="./index.html">Main Menu</a>
         <a class="link-btn" href="./inventory.html">Inventory</a>
+        <a class="link-btn" href="./serial.html">Serial Search</a>
         <a class="link-btn" href="./pole.html">Pole Search</a>
         <a class="link-btn" href="./reports.html">Reports</a>
       </div>
@@ -27,8 +28,8 @@
 
     <div class="app-header">
       <div class="app-title-row">
-        <h1 class="app-title">Search By Serial Number</h1>
-        <div class="app-badge">Tabbed Record View • Read-Only Demo</div>
+        <h1 class="app-title">Transformers In Service</h1>
+        <div class="app-badge">Read-Only Demo</div>
       </div>
     </div>
   </header>
@@ -37,40 +38,35 @@
   <main class="layout">
     <section class="grid-panel">
 
-      <!-- Search bar -->
+      <!-- Search bar / status row -->
       <div class="grid-toolbar">
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width:100%;">
-          <div class="status" style="font-weight:900;">Enter Serial Number For Search</div>
-          <input
-            id="serial-input"
-            class="search"
-            type="search"
-            placeholder="e.g. 2246025 (no CP prefix)"
-            style="min-width:260px;"
-          />
-          <button id="serial-search" class="btn btn-primary btn-small" type="button">Search</button>
-        </div>
-
-        <div id="status" class="status">Ready.</div>
+        <input
+          id="search"
+          class="search"
+          type="search"
+          placeholder="Search in-service transformers…"
+        />
+        <div id="status" class="status">Loading…</div>
       </div>
 
-      <!-- Tabs + Form output area (serial.js will populate) -->
-      <div class="serial-form" id="serial-form">
-        <div class="tabs" id="tabs">
-          <button class="tab active" data-tab="status">Status &amp; Location</button>
-          <button class="tab" data-tab="nameplate">Nameplate Information</button>
-          <button class="tab" data-tab="test">Test Results</button>
-          <button class="tab" data-tab="inventory">Inventory Information</button>
-        </div>
-
-        <div class="tab-panel active" id="tab-status"></div>
-        <div class="tab-panel" id="tab-nameplate"></div>
-        <div class="tab-panel" id="tab-test"></div>
-        <div class="tab-panel" id="tab-inventory"></div>
+      <!-- Results table -->
+      <div class="grid-wrap">
+        <table class="grid" id="grid" aria-label="In Service Transformers">
+          <thead>
+            <tr>
+              <th>Manufacturer</th>
+              <th>Serial</th>
+              <th>Status</th>
+              <th>Feeder</th>
+              <th>Pole</th>
+            </tr>
+          </thead>
+          <tbody id="grid-body"></tbody>
+        </table>
       </div>
 
       <div class="hint">
-        Tip: Search by serial number. Tabs will populate when a match is found.
+        Tip: Select a row, then use View/Edit to open transformer details.
       </div>
 
     </section>
@@ -99,7 +95,7 @@
     </aside>
   </main>
 
-  <!-- VIEW / EDIT MODAL (same IDs as inventory so JS patterns stay consistent) -->
+  <!-- VIEW / EDIT MODAL -->
   <div id="modal" class="modal hidden" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
@@ -113,6 +109,7 @@
       <div id="modal-body" class="modal-body"></div>
 
       <div class="modal-footer">
+        <!-- ✅ NEW: obvious iPad-friendly back button at the bottom -->
         <button id="modal-back" class="btn btn-primary" type="button">
           Back to Results
         </button>
@@ -177,10 +174,10 @@
     }
   </style>
 
-  <!-- Your existing serial logic -->
-  <script src="./serial.js"></script>
+  <!-- Your existing service logic -->
+  <script src="./service.js"></script>
 
-  <!-- Wiring: Back button + backdrop close (does not replace serial.js) -->
+  <!-- Wiring: Back button + backdrop close (does not replace service.js) -->
   <script>
     (function(){
       const modal = document.getElementById("modal");
@@ -197,6 +194,7 @@
       if(closeBtn) closeBtn.addEventListener("click", closeModal);
       if(backBtn)  backBtn.addEventListener("click", closeModal);
 
+      // Tap outside the card closes (iPad-friendly)
       modal.addEventListener("click", (e)=>{
         if(e.target === modal) closeModal();
       });
