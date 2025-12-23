@@ -4,12 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Transformer Inventory</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body>
   <div class="page">
     <div class="shell">
+
       <div class="top-title">Transformer Inventory</div>
 
       <header class="hero">
@@ -19,22 +20,23 @@
 
       <main class="content">
         <section class="panel-left">
-          <a class="menu-item" href="open-inventory.html">
+
+          <!-- Row button -->
+          <a class="menu-item" href="./serial.html">
             <span class="menu-icon">🔎</span>
             <span class="menu-text">
-              <span class="menu-title">Locate Transformers by Serial Number</span>
+              <span class="menu-title">Locate Transformers by Serial<br/>Number</span>
             </span>
           </a>
 
-          <a class="menu-item" href="pole-search.html">
+          <a class="menu-item" href="./pole.html">
             <span class="menu-icon">🔎</span>
             <span class="menu-text">
               <span class="menu-title">Locate Transformers by Pole Number</span>
             </span>
           </a>
 
-          <!-- Example of still-disabled item (kept on purpose) -->
-          <div class="menu-item disabled" aria-disabled="true">
+          <div class="menu-item disabled" aria-disabled="true" title="Coming soon">
             <span class="menu-icon">📍</span>
             <span class="menu-text">
               <span class="menu-title">Locate Transformers by Address Range</span>
@@ -42,58 +44,63 @@
             <span class="badge">Coming soon</span>
           </div>
 
-          <a class="menu-item" href="inventory.html">
+          <a class="menu-item" href="./inventory.html">
             <span class="menu-icon">📦</span>
             <span class="menu-text">
-              <span class="menu-title">Locate Transformers in Stock (Inventory)</span>
+              <span class="menu-title">Locate Transformers in Stock<br/>(Inventory)</span>
             </span>
           </a>
 
-          <a class="menu-item" href="in-service.html">
+          <a class="menu-item" href="./service.html">
             <span class="menu-icon">⚡</span>
             <span class="menu-text">
               <span class="menu-title">Locate Transformers in Service</span>
             </span>
           </a>
 
-          <!-- ✅ FIXED: Report Menu is now ACTIVE -->
-          <a class="menu-item" id="reportMenuLink" href="reports/feeder-analysis.html">
+          <!-- ✅ FIX: Report Menu is ACTIVE and links to reports.html -->
+          <a class="menu-item" href="./reports.html" id="reportMenuCard">
             <span class="menu-icon">🖨️</span>
             <span class="menu-text">
               <span class="menu-title">Report Menu</span>
             </span>
           </a>
 
-          <!-- Example of still-disabled item (kept on purpose) -->
-          <div class="menu-item disabled" aria-disabled="true">
+          <div class="menu-item disabled" aria-disabled="true" title="Coming soon">
             <span class="menu-icon">🛠️</span>
             <span class="menu-text">
               <span class="menu-title">Utility Menu</span>
             </span>
             <span class="badge">Coming soon</span>
           </div>
+
         </section>
 
         <section class="panel-right">
-          <button class="ghost-btn" type="button" disabled>Update Public DB</button>
-          <button class="ghost-btn" type="button" disabled>Update ArcGIS</button>
+          <button class="ghost-btn" type="button" disabled title="Coming soon (SQL / ArcGIS automation)">
+            Update Public DB
+          </button>
+          <button class="ghost-btn" type="button" disabled title="Coming soon (SQL / ArcGIS automation)">
+            Update ArcGIS
+          </button>
         </section>
       </main>
 
-      <footer class="footer-nav">
-        <a href="inventory.html">Open Inventory</a>
-        <span class="sep">|</span>
-        <a href="pole-search.html">Pole Search</a>
-        <span class="sep">|</span>
-        <a href="open-inventory.html">Serial Search</a>
-        <span class="sep">|</span>
-        <a href="in-service.html">In Service</a>
-        <span class="sep">|</span>
-        <a id="footerReportsLink" href="reports/feeder-analysis.html">Reports</a>
+      <footer class="menu-footer">
+        <a class="menu-footer-link" href="./inventory.html">Open Inventory</a>
+        <span class="menu-footer-sep">|</span>
+        <a class="menu-footer-link" href="./pole.html">Pole Search</a>
+        <span class="menu-footer-sep">|</span>
+        <a class="menu-footer-link" href="./serial.html">Serial Search</a>
+        <span class="menu-footer-sep">|</span>
+        <a class="menu-footer-link" href="./service.html">In Service</a>
+        <span class="menu-footer-sep">|</span>
+        <a class="menu-footer-link" href="./reports.html">Reports</a>
       </footer>
+
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
