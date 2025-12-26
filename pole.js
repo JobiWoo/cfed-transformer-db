@@ -61,9 +61,7 @@ const btnHelp = document.getElementById("btn-help");
 const elStatus = document.getElementById("status");
 const tbody = document.getElementById("grid-body");
 
-const modal = document.getElementById("modal");
-const modalClose = document.getElementById("modal-close");
-const modalBack = document.getElementById("modal-back"); // ✅ new back button
+// Modal content elements (modal.js controls open/close)
 const modalBody = document.getElementById("modal-body");
 const modalSubtitle = document.getElementById("modal-subtitle");
 
@@ -114,7 +112,7 @@ function renderGrid(rows) {
     const sec = safeStr(r.SEC_VOLT);
     const feeder = computeFeeder(r);
 
-    // Status badge shown next to feeder (no extra column needed)
+    // Status badge shown next to feeder
     const feederCell = `${feeder} <span style="margin-left:8px;">${renderStatusBadge(r.STATUS)}</span>`;
 
     tr.innerHTML = `
@@ -178,59 +176,35 @@ function runPoleSearch() {
 }
 
 /* =========================
-   Modal helpers (improved)
-   ========================= */
-let prevBodyOverflow = "";
-
-function openModal() {
-  if (!modal) return;
-
-  // Prevent background scroll (iPad win)
-  prevBodyOverflow = document.body.style.overflow || "";
-  document.body.style.overflow = "hidden";
-
-  modal.classList.remove("hidden");
-  modal.setAttribute("aria-hidden", "false");
-
-  // Focus close for accessibility / keyboard
-  if (modalClose) modalClose.focus();
-}
-
-function closeModal() {
-  if (!modal) return;
-
-  modal.classList.add("hidden");
-  modal.setAttribute("aria-hidden", "true");
-
-  // Restore background scroll
-  document.body.style.overflow = prevBodyOverflow;
-}
-
-/* =========================
    View/Edit modal (read-only)
    ========================= */
 function openModalForRow(row) {
   if (!row) return;
 
-  modalSubtitle.textContent =
-    `Trans_ID: ${safeStr(row.TRANS_ID) || "—"} • Pole: ${safeStr(row.POLE_NO) || "—"} • Status: ${safeStr(row.STATUS) || "—"}`;
+  if (modalSubtitle) {
+    modalSubtitle.textContent =
+      `Trans_ID: ${safeStr(row.TRANS_ID) || "—"} • Pole: ${safeStr(row.POLE_NO) || "—"} • Status: ${safeStr(row.STATUS) || "—"}`;
+  }
 
-  modalBody.innerHTML = `
-    <div class="kv">
-      ${Object.keys(row).map(k => {
-        let val = safeStr(row[k]);
-        if (k === "IMP") val = fmtFixed(row[k], 2);
-        return `
-          <div class="field">
-            <div class="label">${k}</div>
-            <div class="value">${val || "—"}</div>
-          </div>
-        `;
-      }).join("")}
-    </div>
-  `;
+  if (modalBody) {
+    modalBody.innerHTML = `
+      <div class="kv">
+        ${Object.keys(row).map(k => {
+          let val = safeStr(row[k]);
+          if (k === "IMP") val = fmtFixed(row[k], 2);
+          return `
+            <div class="field">
+              <div class="label">${k}</div>
+              <div class="value">${val || "—"}</div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
 
-  openModal();
+  // ✅ Shared modal open
+  window.Modal?.open();
 }
 
 /* =========================
@@ -256,7 +230,6 @@ function buildReportHtml(rows, poleLabel) {
     const pri = safeStr(r.PRI_VOLT);
     const sec = safeStr(r.SEC_VOLT);
     const feeder = computeFeeder(r);
-    const status = renderStatusBadge(r.STATUS);
 
     return `<tr>
       <td>${address}</td>
@@ -265,7 +238,7 @@ function buildReportHtml(rows, poleLabel) {
       <td>${pri}</td>
       <td>${sec}</td>
       <td>${feeder}</td>
-      <td>${status}</td>
+      <td>${renderStatusBadge(r.STATUS)}</td>
     </tr>`;
   }).join("");
 
@@ -344,6 +317,9 @@ Read-only for now; later will save to SQL Server.`
 }
 
 async function init() {
+  // ✅ Initialize shared modal wiring (close/back/backdrop/ESC/scroll lock)
+  window.Modal?.init();
+
   try {
     const res = await fetch(DATA_URL, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -374,21 +350,6 @@ btnPreview?.addEventListener("click", openPreview);
 
 btnQuit?.addEventListener("click", () => {
   window.location.href = "./index.html";
-});
-
-// Modal controls
-modalClose?.addEventListener("click", closeModal);
-modalBack?.addEventListener("click", closeModal); // ✅ Back to Results works
-
-modal?.addEventListener("click", (e) => {
-  if (e.target === modal) closeModal();
-});
-
-// ESC closes modal (desktop convenience)
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && modal && !modal.classList.contains("hidden")) {
-    closeModal();
-  }
 });
 
 btnHelp?.addEventListener("click", showHelp);
