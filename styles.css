@@ -110,7 +110,7 @@ body{
 }
 
 /* =========================================================
-   HERO (MAIN MENU HEADER) + CFES WATERMARK
+   HERO (MAIN MENU HEADER) + CFES WATERMARK (STRONGER)
    ========================================================= */
 
 .hero{
@@ -129,20 +129,20 @@ body{
   background-image:url("./assets/cfes-header.jpg");
   background-repeat:no-repeat;
 
-  /* Push to right so text area stays clean */
-  background-position:right -40px center;
-  background-size:600px auto;
+  /* push farther right and enlarge */
+  background-position:right -110px center;
+  background-size:720px auto;
 
-  /* Increase visibility */
-  opacity:0.38;
+  /* stronger visibility */
+  opacity:0.55;
 
-  /* Make it feel emblem-like (less photo-ish) */
-  filter:grayscale(1) contrast(1.15) brightness(1.05);
+  /* cleaner emblem look */
+  filter: grayscale(1) contrast(1.35) brightness(1.18);
 
   pointer-events:none;
 }
 
-/* Dark overlay: strong on left for text, lighter on right for the emblem */
+/* Dark overlay: strong on left for text, much lighter on right for emblem */
 .hero.hero-cfes::after{
   content:"";
   position:absolute;
@@ -150,10 +150,10 @@ body{
 
   background: linear-gradient(
     90deg,
-    rgba(4,30,79,.94) 0%,
-    rgba(4,30,79,.75) 45%,
-    rgba(4,30,79,.45) 70%,
-    rgba(4,30,79,.25) 100%
+    rgba(4,30,79,.96) 0%,
+    rgba(4,30,79,.78) 40%,
+    rgba(4,30,79,.38) 70%,
+    rgba(4,30,79,.12) 100%
   );
 
   pointer-events:none;
@@ -183,8 +183,8 @@ body{
 @media (max-width:520px){
   .hero.hero-cfes::before{
     background-position:center;
-    background-size:420px auto;
-    opacity:0.22;
+    background-size:520px auto;
+    opacity:0.25;
   }
 }
 
@@ -318,21 +318,23 @@ body{
 }
 
 /* =========================================================
-   CREST WATERMARK (SIGNATURE)
+   CREST WATERMARK (SIGNATURE) – MORE VISIBLE + RIGHT ALIGNED
    ========================================================= */
 
 .crest-watermark{
   position:absolute;
-  right:14px;
+
+  /* moved slightly right so it lines up on the border */
+  right:4px;
 
   /* raised so it doesn't overlap footer text */
   bottom:92px;
 
-  width:160px;
-  height:160px;
+  width:170px;
+  height:170px;
 
   /* more visible */
-  opacity:0.15;
+  opacity:0.22;
 
   pointer-events:none;
   z-index:1;
