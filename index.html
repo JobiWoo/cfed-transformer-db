@@ -41,14 +41,16 @@
           </span>
         </a>
 
-        <!-- Address Search (disabled) -->
-        <div class="menu-item disabled" aria-disabled="true" title="Coming soon">
+        <!-- Address Search (COMING SOON but clickable) -->
+        <button class="menu-item disabled comingsoon-btn" type="button"
+                data-gif="./assets/coming-soon.gif"
+                data-title="Locate Transformers by Address Range">
           <span class="menu-icon">📍</span>
           <span class="menu-text">
             <span class="menu-title">Locate Transformers by Address Range</span>
           </span>
           <span class="badge">Coming soon</span>
-        </div>
+        </button>
 
         <!-- Inventory -->
         <a class="menu-item" href="./inventory.html">
@@ -74,14 +76,16 @@
           </span>
         </a>
 
-        <!-- Utility Menu (disabled) -->
-        <div class="menu-item disabled" aria-disabled="true" title="Coming soon">
+        <!-- Utility Menu (COMING SOON but clickable) -->
+        <button class="menu-item disabled comingsoon-btn" type="button"
+                data-gif="./assets/coming-soon.gif"
+                data-title="Utility Menu">
           <span class="menu-icon">🛠️</span>
           <span class="menu-text">
             <span class="menu-title">Utility Menu</span>
           </span>
           <span class="badge">Coming soon</span>
-        </div>
+        </button>
 
       </section>
 
@@ -129,5 +133,23 @@
   </div>
 </div>
 
+<!-- COMING SOON MODAL -->
+<div class="cs-modal hidden" id="csModal" role="dialog" aria-modal="true" aria-labelledby="csTitle">
+  <div class="cs-backdrop" data-close="1"></div>
+
+  <div class="cs-card" role="document">
+    <div class="cs-header">
+      <div class="cs-title" id="csTitle">Coming soon</div>
+      <button class="cs-close" type="button" aria-label="Close" id="csCloseBtn">✕</button>
+    </div>
+
+    <div class="cs-body">
+      <img id="csGif" class="cs-gif" src="" alt="Coming soon preview" />
+      <div class="cs-note">This section is under construction.</div>
+    </div>
+  </div>
+</div>
+
+<script src="./js/coming-soon.js"></script>
 </body>
 </html>
