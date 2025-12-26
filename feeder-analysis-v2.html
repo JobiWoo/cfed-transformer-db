@@ -346,7 +346,7 @@
         <h1>⚡ Feeder Analysis Dashboard <span style="font-weight:700; opacity:.9;">(v2)</span></h1>
         <div class="header-meta">
           <span>📅 <span id="currentDate"></span></span>
-          <span>📦 Source: <span id="dataSourceLabel">./data/transformers.json</span></span>
+          <span>📦 Source: <span id="dataSourceLabel">./data/feeder_analysis_table.json</span></span>
         </div>
       </div>
 
@@ -366,8 +366,8 @@
     <div class="banner" id="banner">
       <span style="font-size:1.3rem">🧪</span>
       <div>
-        <strong>Test Report:</strong> This is a v2 dashboard that derives feeder/phase totals from transformer records.
-        (KVA and customer counts are allocated across phases based on the PHASE field.)
+        <strong>Aligned to Working Report:</strong> This v2 dashboard reads pre-calculated feeder rows from
+        <code>feeder_analysis_table.json</code> so totals match your existing Feeder Statistics report.
       </div>
     </div>
 
@@ -375,17 +375,17 @@
       <div class="summary-card info">
         <div class="label">Total System Load</div>
         <div class="value" id="totalLoad">--</div>
-        <div class="subtext">kVA across all phases</div>
+        <div class="subtext">Connected kVA across all phases</div>
       </div>
       <div class="summary-card info">
         <div class="label">Transformers</div>
         <div class="value" id="totalTransformers">--</div>
-        <div class="subtext">Total count</div>
+        <div class="subtext">Total rows</div>
       </div>
       <div class="summary-card info">
         <div class="label">Customers</div>
         <div class="value" id="totalCustomers">--</div>
-        <div class="subtext">Connected (estimated)</div>
+        <div class="subtext">Includes 3-phase customers</div>
       </div>
       <div class="summary-card good">
         <div class="label">Feeders</div>
@@ -436,7 +436,7 @@
     <div class="table-card">
       <div class="chips">
         <span class="chip">Showing: <strong id="metaFeeders">--</strong> feeders</span>
-        <span class="chip">Transformers: <strong id="metaRows">--</strong></span>
+        <span class="chip">Rows: <strong id="metaRows">--</strong></span>
         <span class="chip">View: <strong id="metaView">System</strong></span>
       </div>
 
@@ -465,6 +465,7 @@
     // ============================================================
     // CONFIGURATION
     // ============================================================
+    const DATA_URL = "./data/feeder_analysis_table.json";
     const THEISS_FEEDERS = new Set([1203, 1209]);
     const FEEDER_LABEL_OVERRIDES = { 1203: "THEISS 3", 1209: "THEISS 9" };
     const IMBALANCE_THRESHOLD = 0.15;
@@ -473,7 +474,7 @@
     // STATE
     // ============================================================
     const state = {
-      data: { rows: [] },
+      data: { rows: [] }, // rows are feeder-analysis records
       substation: "ALL",
       feeder: "ALL",
       search: "",
@@ -502,142 +503,20 @@
     }
 
     function substationLabel(key) {
-      return key === "THEISS" ? "Theiss Substation" : `Substation ${key}`;
+      return key === "THEISS" ? "Theiss Substation" : `Substation ${ explain(key) }`;
+      function explain(k){ return k; }
     }
 
     // ============================================================
-    // MAPPING: transformers.json -> dashboard rows
-    // ============================================================
-    function asNumber(v) {
-      const s = String(v ?? "").trim();
-      if (!s) return NaN;
-      const m = s.match(/-?\d+(\.\d+)?/);
-      return m ? Number(m[0]) : NaN;
-    }
-
-    // ✅ FIXED: This is the core bugfix.
-    // In many utility datasets, PHASE="3" means "3-phase" (ABC), NOT Phase C.
-    function parsePhases(raw) {
-      const s0 = String(raw ?? "").trim().toUpperCase();
-      if (!s0) return []; // unknown
-
-      const s = s0
-        .replace(/PHASE\s*/g, "")
-        .replace(/\s+/g, "")
-        .replace(/[^A-Z0-9]/g, "");
-
-      // Common 3-phase encodings
-      if (s === "3" || s === "3PH" || s === "3PHASE" || s === "THREEPHASE") return ["A","B","C"];
-      if (s === "ABC" || s === "A B C" || s === "A-B-C") return ["A","B","C"];
-
-      // Common 2-phase / pair encodings
-      if (s === "AB" || s === "12") return ["A","B"];
-      if (s === "BC" || s === "23") return ["B","C"];
-      if (s === "AC" || s === "13") return ["A","C"];
-
-      // Explicit numeric list forms
-      if (s === "123") return ["A","B","C"];
-
-      // Common single-phase labels
-      if (s === "A" || s === "PHASEA" || s === "1") return ["A"];
-      if (s === "B" || s === "PHASEB" || s === "2") return ["B"];
-      if (s === "C" || s === "PHASEC") return ["C"];
-
-      // If letters embedded
-      const phases = [];
-      if (s.includes("A")) phases.push("A");
-      if (s.includes("B")) phases.push("B");
-      if (s.includes("C")) phases.push("C");
-
-      // As a fallback, if it's exactly one digit 1/2/3
-      // (but we already handled "3" above as 3-phase)
-      if (phases.length === 0 && /^[12]$/.test(s)) {
-        return s === "1" ? ["A"] : ["B"];
-      }
-
-      return phases;
-    }
-
-    function getXfmrName(row) {
-      return String(row.TRANS_ID ?? row.Serial ?? row.SERIAL ?? row.FACILITY_ID ?? row.facility_id ?? "").trim() || "Transformer";
-    }
-
-    function getFeederNumber(row) {
-      const v = row.FEEDER ?? row.Feeder ?? row.feeder ?? row.FEEDER_ID ?? row.Feeder_ID;
-      const num = asNumber(v);
-      return Number.isFinite(num) ? Math.trunc(num) : NaN;
-    }
-
-    function getKva(row) {
-      const v = row.KVA ?? row.kva ?? row.Kva ?? row.KVA_ID ?? row.kva_id;
-      const num = asNumber(v);
-      return Number.isFinite(num) ? num : 0;
-    }
-
-    function getCustomers(row) {
-      const v = row.NO_CUST ?? row.no_cust ?? row.Customers ?? row.CUSTOMERS ?? row.customer_count;
-      const num = asNumber(v);
-      return Number.isFinite(num) ? num : 0;
-    }
-
-    function mapTransformersToFeederRows(transformerRows) {
-      const out = [];
-
-      for (const r of transformerRows) {
-        const feeder = getFeederNumber(r);
-        if (!Number.isFinite(feeder)) continue;
-
-        const kva = getKva(r);
-        const cust = getCustomers(r);
-
-        const phases = parsePhases(r.PHASE ?? r.Phase ?? r.PHASES ?? r.phases);
-
-        // Allocate across phases present.
-        // If unknown, allocate all to A as placeholder (still counts).
-        const pCount = phases.length || 1;
-        const kvaEach = kva / pCount;
-        const custEach = cust / pCount;
-
-        const row = {
-          feeder: feeder,
-          xfmr_name: getXfmrName(r),
-
-          phase1_kva: 0, phase2_kva: 0, phase3_kva: 0,
-          phase1_cust: 0, phase2_cust: 0, phase3_cust: 0,
-
-          cust_3ph: 0
-        };
-
-        const is3ph = phases.length === 3;
-
-        if (phases.length === 0) {
-          row.phase1_kva += kva;
-          row.phase1_cust += cust;
-        } else {
-          for (const ph of phases) {
-            if (ph === "A") { row.phase1_kva += kvaEach; row.phase1_cust += custEach; }
-            if (ph === "B") { row.phase2_kva += kvaEach; row.phase2_cust += custEach; }
-            if (ph === "C") { row.phase3_kva += kvaEach; row.phase3_cust += custEach; }
-          }
-        }
-
-        if (is3ph) row.cust_3ph = cust;
-
-        out.push(row);
-      }
-
-      return out;
-    }
-
-    // ============================================================
-    // AGGREGATION
+    // AGGREGATION (uses feeder_analysis_table rows directly)
     // ============================================================
     function customers(r) {
-      return n(r.phase1_cust) + n(r.phase2_cust) + n(r.phase3_cust);
+      // IMPORTANT: include cust_3ph for totals
+      return n(Number(r.phase1_cust)) + n(Number(r.phase2_cust)) + n(Number(r.phase3_cust)) + n(Number(r.cust_3ph));
     }
 
     function kvaTotal(r) {
-      return n(r.phase1_kva) + n(r.phase2_kva) + n(r.phase3_kva);
+      return n(Number(r.phase1_kva)) + n(Number(r.phase2_kva)) + n(Number(r.phase3_kva));
     }
 
     function hasImbalance(agg) {
@@ -651,11 +530,11 @@
     function buildAgg(rows) {
       const agg = { transformers: 0, cust: 0, p1: 0, p2: 0, p3: 0, total: 0 };
       for (const r of rows) {
-        agg.transformers += 1;
+        agg.transformers += 1; // one row = one record in the feeder_analysis_table
         agg.cust += customers(r);
-        agg.p1 += n(r.phase1_kva);
-        agg.p2 += n(r.phase2_kva);
-        agg.p3 += n(r.phase3_kva);
+        agg.p1 += n(Number(r.phase1_kva));
+        agg.p2 += n(Number(r.phase2_kva));
+        agg.p3 += n(Number(r.phase3_kva));
         agg.total += kvaTotal(r);
       }
       return agg;
@@ -671,13 +550,17 @@
 
     function filterRows(all) {
       const allowed = allowedFeedersForSubstation(state.substation);
-      const feeder = state.feeder;
+      const feederSel = state.feeder;
       const q = state.search.trim().toLowerCase();
 
       return all.filter(r => {
-        if (allowed && !allowed.has(r.feeder)) return false;
-        if (feeder !== "ALL" && r.feeder !== Number(feeder)) return false;
-        if (q && !feederLabel(r.feeder).toLowerCase().includes(q)) return false;
+        const f = Number(r.feeder);
+        if (!Number.isFinite(f)) return false;
+
+        if (allowed && !allowed.has(f)) return false;
+        if (feederSel !== "ALL" && f !== Number(feederSel)) return false;
+        if (q && !feederLabel(f).toLowerCase().includes(q)) return false;
+
         return true;
       });
     }
@@ -691,9 +574,10 @@
     function renderCharts() {
       const all = state.data.rows;
 
+      // Substation totals
       const substationData = new Map();
       for (const [key, feeders] of state.substationToFeeders) {
-        const rows = all.filter(r => feeders.has(r.feeder));
+        const rows = all.filter(r => feeders.has(Number(r.feeder)));
         const agg = buildAgg(rows);
         substationData.set(key, agg.total);
       }
@@ -731,6 +615,7 @@
         }
       });
 
+      // Phase balance doughnut
       const totalAgg = buildAgg(all);
       const ctx2 = document.getElementById('phaseChart').getContext('2d');
       if (phaseChart) phaseChart.destroy();
@@ -771,7 +656,7 @@
 
       let imbalanceCount = 0;
       for (const f of state.feedersAll) {
-        const rows = all.filter(r => r.feeder === f);
+        const rows = all.filter(r => Number(r.feeder) === f);
         if (hasImbalance(buildAgg(rows))) imbalanceCount++;
       }
       document.getElementById('imbalanceCount').textContent = imbalanceCount;
@@ -788,18 +673,23 @@
       const all = state.data.rows;
       const displayRows = filterRows(all);
 
+      // Group by feeder
       const feederMap = new Map();
       for (const r of displayRows) {
-        if (!feederMap.has(r.feeder)) feederMap.set(r.feeder, []);
-        feederMap.get(r.feeder).push(r);
+        const f = Number(r.feeder);
+        if (!Number.isFinite(f)) continue;
+        if (!feederMap.has(f)) feederMap.set(f, []);
+        feederMap.get(f).push(r);
       }
 
+      // Aggregate per feeder
       let feederAggs = [];
       for (const [f, rows] of feederMap) {
         const agg = buildAgg(rows);
         feederAggs.push({ feeder: f, ...agg, imbalance: hasImbalance(agg) });
       }
 
+      // Sort
       const col = state.sortCol;
       const dir = state.sortDir === 'asc' ? 1 : -1;
       feederAggs.sort((a, b) => {
@@ -836,8 +726,9 @@
         tbody.appendChild(tr);
       }
 
+      // Footer total (substation view total)
       const allowed = allowedFeedersForSubstation(state.substation);
-      const totalRows = allowed ? all.filter(r => allowed.has(r.feeder)) : all;
+      const totalRows = allowed ? all.filter(r => allowed.has(Number(r.feeder))) : all;
       const totalAgg = buildAgg(totalRows);
       const label = state.substation === "ALL" ? "System Total" : `${substationLabel(state.substation)} Total`;
 
@@ -871,8 +762,10 @@
       const displayRows = filterRows(state.data.rows);
       const feederMap = new Map();
       for (const r of displayRows) {
-        if (!feederMap.has(r.feeder)) feederMap.set(r.feeder, []);
-        feederMap.get(r.feeder).push(r);
+        const f = Number(r.feeder);
+        if (!Number.isFinite(f)) continue;
+        if (!feederMap.has(f)) feederMap.set(f, []);
+        feederMap.get(f).push(r);
       }
 
       let csv = 'Feeder,Phase A kVA,Phase B kVA,Phase C kVA,Total kVA,Transformers,Customers\n';
@@ -893,15 +786,15 @@
     // ============================================================
     // INIT
     // ============================================================
-    async function loadTransformersJson() {
-      const res = await fetch('./data/transformers.json', { cache: 'no-store' });
-      if (!res.ok) throw new Error(`Failed to load transformers.json (HTTP ${res.status})`);
+    async function loadFeederAnalysisTable() {
+      const res = await fetch(DATA_URL, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Failed to load feeder_analysis_table.json (HTTP ${res.status})`);
       return await res.json();
     }
 
     function buildIndex() {
       state.substationToFeeders = new Map();
-      const feeders = [...new Set(state.data.rows.map(r => r.feeder))]
+      const feeders = [...new Set(state.data.rows.map(r => Number(r.feeder)))]
         .filter(Number.isFinite)
         .sort((a, b) => a - b);
 
@@ -988,10 +881,8 @@
         new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 
       try {
-        const raw = await loadTransformersJson();
-        const transformerRows = Array.isArray(raw) ? raw : (raw.rows ?? raw.data ?? []);
-
-        state.data.rows = mapTransformersToFeederRows(transformerRows);
+        const raw = await loadFeederAnalysisTable();
+        state.data.rows = Array.isArray(raw) ? raw : (raw.rows ?? raw.data ?? []);
 
         buildIndex();
         fillSubstationSelect();
@@ -1003,8 +894,11 @@
         renderTable();
       } catch (err) {
         console.error(err);
-        document.getElementById('banner').innerHTML =
-          `<span style="font-size:1.3rem">❌</span><div><strong>Failed to load data.</strong><div style="opacity:.9;margin-top:4px;">${String(err.message || err)}</div></div>`;
+        const banner = document.getElementById('banner');
+        if (banner) {
+          banner.innerHTML =
+            `<span style="font-size:1.3rem">❌</span><div><strong>Failed to load data.</strong><div style="opacity:.9;margin-top:4px;">${String(err.message || err)}</div></div>`;
+        }
       }
     }
 
