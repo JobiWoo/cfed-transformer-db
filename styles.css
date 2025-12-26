@@ -482,7 +482,7 @@ body{
   cursor:not-allowed;
 }
 
-/* Homepage menu cards – scoped */
+/* Homepage menu cards – scoped (LEFT) */
 .panel-left .menu-item{
   display:flex;
   align-items:center;
@@ -535,6 +535,79 @@ body{
 }
 
 .panel-left .menu-item.disabled{
+  opacity:.55;
+  pointer-events:none;
+  cursor:not-allowed;
+  background:#e6e8ef;
+}
+
+/* =========================================================
+   HOMEPAGE – RIGHT PANEL "Additional searches" (NEW)
+   Makes right-side links match the left card template.
+   ========================================================= */
+
+/* Subtitle label on the right panel */
+.panel-subtitle{
+  margin-top: 10px;
+  font-weight: 900;
+  font-size: 14px;
+  color: var(--text);
+  letter-spacing: .2px;
+}
+
+/* Same card look as left, but scoped to panel-right */
+.panel-right .menu-item{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:16px 14px;
+  margin: 0 0 12px;
+  background: #eef1f6;
+  border:1px solid var(--line);
+  text-decoration:none;
+  color: var(--text);
+  transition: transform .05s ease, background .12s ease, border-color .12s ease;
+  position:relative;
+}
+
+.panel-right .menu-item:hover{
+  background:#f6f7fb;
+  border-color:#b7bdd0;
+  transform: translateY(-1px);
+}
+
+.panel-right .menu-item:active{
+  transform: translateY(0);
+}
+
+.panel-right .menu-icon{
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  background:#fff;
+  border:1px solid var(--line);
+  font-size:20px;
+}
+
+.panel-right .menu-title{
+  font-size:20px;
+  font-weight:900;
+  line-height:1.15;
+}
+
+.panel-right .badge{
+  margin-left:auto;
+  background:#f4f6fb;
+  border:1px solid #cfd6ea;
+  color:#6b7280;
+  border-radius: 999px;
+  padding:6px 10px;
+  font-weight:800;
+  font-size:14px;
+}
+
+.panel-right .menu-item.disabled{
   opacity:.55;
   pointer-events:none;
   cursor:not-allowed;
