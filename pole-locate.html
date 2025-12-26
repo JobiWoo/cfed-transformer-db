@@ -1,99 +1,702 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Locate Poles by Pole Number</title>
-
-  <!-- Use your existing site stylesheet -->
-  <link rel="stylesheet" href="./css/cfed.css" />
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locate Poles by Pole Number | City of Cuyahoga Falls</title>
   <style>
-    /* Small, safe additions so it looks like your other search pages */
-    .page-wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
-    .card { background: #fff; border: 1px solid #d7dbe1; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
-    .card-hd { padding: 14px 16px; border-bottom: 1px solid #e7eaf0; display:flex; gap:10px; align-items:center; justify-content:space-between; }
-    .card-bd { padding: 16px; }
-
-    .search-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
-    .field { display:flex; flex-direction:column; gap:6px; min-width: 260px; }
-    .field label { font-weight: 600; }
-    .field input {
-      height: 40px; padding: 0 12px; border: 1px solid #cfd6e3; border-radius: 8px;
-      font-size: 16px;
+    *, *::before, *::after {
+      box-sizing: border-box;
     }
+
+    :root {
+      --primary: #1e5a8a;
+      --primary-dark: #14405f;
+      --primary-light: #2d7ab8;
+      --accent: #2e8b57;
+      --accent-light: #3da86a;
+      --bg-page: #f4f6f9;
+      --bg-card: #ffffff;
+      --border: #dce1e8;
+      --border-light: #e8ecf1;
+      --text-primary: #1a2a3a;
+      --text-secondary: #5a6a7a;
+      --text-muted: #8a96a4;
+      --error: #d94452;
+      --error-bg: #fdf2f3;
+      --error-border: #f5c6cb;
+      --success: #28a745;
+      --success-bg: #f0fdf4;
+      --success-border: #c3e6cb;
+      --warning: #ffc107;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --transition: 0.2s ease;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #fff;
+      padding: 0;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .header-content {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 24px 20px;
+      position: relative;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 6px;
+    }
+
+    .header-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .header-sub {
+      font-size: 0.85rem;
+      opacity: 0.85;
+      margin-left: 58px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      opacity: 0.75;
+      margin-top: 12px;
+      margin-left: 58px;
+    }
+
+    .breadcrumb a {
+      color: inherit;
+      text-decoration: none;
+      transition: opacity var(--transition);
+    }
+
+    .breadcrumb a:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+
+    .breadcrumb span {
+      opacity: 0.6;
+    }
+
+    /* ===== MAIN CONTAINER ===== */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 28px 24px 48px;
+    }
+
+    /* ===== SEARCH CARD ===== */
+    .search-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-light);
+      overflow: hidden;
+    }
+
+    .search-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border-light);
+      background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+    }
+
+    .search-header h2 {
+      margin: 0 0 4px 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-header h2 .icon {
+      font-size: 1.2rem;
+    }
+
+    .search-header p {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .search-header p code {
+      background: #e8ecf1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+    }
+
+    .search-body {
+      padding: 24px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      position: relative;
+    }
+
+    .input-wrapper .input-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      pointer-events: none;
+      transition: color var(--transition);
+    }
+
+    .input-wrapper input {
+      width: 100%;
+      padding: 14px 16px 14px 44px;
+      font-size: 1rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      background: #fff;
+      color: var(--text-primary);
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .input-wrapper input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .input-wrapper input:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 4px rgba(46, 122, 184, 0.12);
+    }
+
+    .input-wrapper input:focus + .input-icon {
+      color: var(--primary);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
     .btn {
-      height: 40px; padding: 0 16px; border-radius: 8px;
-      border: 1px solid #1f4f9a; background: #1f4f9a; color: #fff; font-weight: 700;
+      padding: 14px 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-md);
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all var(--transition);
+      white-space: nowrap;
     }
-    .btn:disabled { opacity: .6; cursor: not-allowed; }
 
-    .hint { color:#556; font-size: 14px; margin-top: 8px; }
-    .status { font-size: 14px; color:#556; }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
 
-    .result-title { font-size: 18px; font-weight: 800; }
-    .result-sub { color:#556; font-size: 14px; margin-top: 2px; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(30, 90, 138, 0.25);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+      box-shadow: 0 4px 12px rgba(30, 90, 138, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: #e8ecf1;
+      color: var(--text-secondary);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #dce1e8;
+      color: var(--text-primary);
+    }
+
+    .search-tip {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 16px;
+      background: #f8fafc;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .search-tip .tip-icon {
+      color: var(--primary);
+      font-size: 1rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .search-footer {
+      padding: 14px 24px;
+      background: linear-gradient(180deg, #f8fafc 0%, #f4f6f8 100%);
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .data-status {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .data-status .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    .data-status.loading .status-dot {
+      background: var(--warning);
+    }
+
+    .data-status.error .status-dot {
+      background: var(--error);
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ===== RESULTS AREA ===== */
+    .result-area {
+      margin-top: 24px;
+    }
+
+    .result-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-light);
+      overflow: hidden;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .result-header {
+      padding: 18px 24px;
+      background: linear-gradient(135deg, var(--accent) 0%, #247048 100%);
+      color: #fff;
+    }
+
+    .result-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .result-subtitle {
+      font-size: 0.8rem;
+      opacity: 0.85;
+    }
+
+    .result-subtitle code {
+      background: rgba(255,255,255,0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+
+    .result-body {
+      padding: 20px 24px;
+    }
 
     .kv-grid {
-      display:grid;
-      grid-template-columns: repeat(4, minmax(180px, 1fr));
-      gap: 10px 14px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
     }
-    @media (max-width: 900px) { .kv-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
-    @media (max-width: 520px) { .kv-grid { grid-template-columns: 1fr; } }
 
-    .kv { border: 1px solid #e4e8f0; border-radius: 10px; padding: 10px 12px; background: #fafbfe; }
-    .kv .k { font-size: 12px; letter-spacing: .02em; text-transform: uppercase; color:#667; font-weight: 800; }
-    .kv .v { font-size: 16px; font-weight: 700; color:#111; margin-top: 4px; word-break: break-word; }
+    .kv-item {
+      display: flex;
+      flex-direction: column;
+      padding: 12px 16px;
+      background: #f8fafc;
+      border-radius: var(--radius-sm);
+      border-left: 3px solid var(--border);
+      transition: border-color var(--transition), background var(--transition);
+    }
 
-    .muted { color:#667; }
-    .error { color:#a31616; font-weight: 700; }
+    .kv-item:hover {
+      background: #f0f4f8;
+      border-left-color: var(--primary);
+    }
+
+    .kv-item.highlight {
+      background: #e8f4fc;
+      border-left-color: var(--primary);
+    }
+
+    .kv-item .kv-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .kv-item .kv-value {
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      font-weight: 500;
+      word-break: break-word;
+    }
+
+    .kv-item .kv-value.empty {
+      color: var(--text-muted);
+      font-style: italic;
+      font-weight: 400;
+    }
+
+    /* Category sections */
+    .kv-section {
+      margin-bottom: 20px;
+    }
+
+    .kv-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .kv-section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Error/Not Found State */
+    .error-card {
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      animation: shake 0.4s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-4px); }
+      40%, 80% { transform: translateX(4px); }
+    }
+
+    .error-card .error-title {
+      font-weight: 600;
+      color: var(--error);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .error-card .error-message {
+      color: #7a3c42;
+      font-size: 0.9rem;
+    }
+
+    /* Empty/Prompt State */
+    .prompt-card {
+      background: #f8fafc;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    .prompt-card .prompt-icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+
+    .prompt-card .prompt-text {
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .prompt-card .prompt-example {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .prompt-card .prompt-example code {
+      background: #e8ecf1;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* ===== LOADING SPINNER ===== */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 600px) {
+      .header-content {
+        padding: 20px 16px;
+      }
+
+      .header-top {
+        gap: 12px;
+      }
+
+      .header-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 1.3rem;
+      }
+
+      .header h1 {
+        font-size: 1.25rem;
+      }
+
+      .header-sub,
+      .breadcrumb {
+        margin-left: 50px;
+      }
+
+      .container {
+        padding: 20px 16px 40px;
+      }
+
+      .input-group {
+        flex-direction: column;
+      }
+
+      .btn-group {
+        width: 100%;
+      }
+
+      .btn {
+        flex: 1;
+        padding: 14px 16px;
+      }
+
+      .search-footer {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
+
+      .kv-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ===== PRINT ===== */
+    @media print {
+      .header {
+        background: #1e5a8a !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .search-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+      }
+
+      .btn {
+        display: none;
+      }
+
+      .result-header {
+        background: #2e8b57 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
   </style>
 </head>
-
 <body>
-  <!-- Keep your existing header structure -->
-  <header class="site-header">
-    <div class="site-topbar">
-      <div class="brand">
-        <div class="brand-title">City of Cuyahoga Falls</div>
-        <div class="brand-subtitle">Electric Department • Poles</div>
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="header-content">
+      <div class="header-top">
+        <div class="header-icon">⚡</div>
+        <h1>Locate Poles by Pole Number</h1>
       </div>
-      <div class="top-actions">
-        <a class="link-btn" href="./index.html">Main Menu</a>
-        <a class="link-btn" href="./reports.html">Reports</a>
-      </div>
+      <div class="header-sub">City of Cuyahoga Falls • Electric Department</div>
+      <nav class="breadcrumb">
+        <a href="#">Main Menu</a>
+        <span>›</span>
+        <a href="#">Reports</a>
+        <span>›</span>
+        <span>Locate Poles</span>
+      </nav>
     </div>
   </header>
 
-  <main class="page-wrap">
-    <div class="card">
-      <div class="card-hd">
-        <div>
-          <div class="result-title">Locate Poles by Pole Number</div>
-          <div class="result-sub">Search matches the <span class="muted">Pole_No</span> field (case-insensitive).</div>
-        </div>
-        <div class="status" id="dataStatus">Loading pole data…</div>
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="container">
+
+    <!-- Search Card -->
+    <div class="search-card">
+      <div class="search-header">
+        <h2><span class="icon">🔍</span> Pole Number Search</h2>
+        <p>Search matches the <code>Pole_No</code> field (case-insensitive)</p>
       </div>
 
-      <div class="card-bd">
-        <div class="search-row">
-          <div class="field">
-            <label for="poleInput">Enter Pole Number</label>
-            <input id="poleInput" type="text" placeholder="Example: O83271" autocomplete="off" />
+      <div class="search-body">
+        <div class="input-group">
+          <div class="input-wrapper">
+            <span class="input-icon">📍</span>
+            <input 
+              type="text" 
+              id="poleInput" 
+              placeholder="Enter pole number (e.g., O83271)"
+              autocomplete="off"
+              spellcheck="false"
+            />
           </div>
-          <button class="btn" id="btnSearch" type="button" disabled>Search</button>
-          <button class="btn" id="btnClear" type="button" disabled style="background:#fff;color:#1f4f9a;">Clear</button>
+          <div class="btn-group">
+            <button class="btn btn-primary" id="btnSearch" disabled>
+              <span>🔎</span> Search
+            </button>
+            <button class="btn btn-secondary" id="btnClear" disabled>
+              Clear
+            </button>
+          </div>
         </div>
 
-        <div class="hint">Tip: spacing doesn’t matter; we normalize by trimming spaces and ignoring uppercase/lowercase.</div>
+        <div class="search-tip">
+          <span class="tip-icon">💡</span>
+          <span><strong>Tip:</strong> Spacing doesn't matter—we normalize by trimming spaces and ignoring uppercase/lowercase.</span>
+        </div>
+      </div>
 
-        <div id="resultArea" style="margin-top:16px;"></div>
+      <div class="search-footer">
+        <div class="data-status loading" id="dataStatusWrapper">
+          <span class="status-dot"></span>
+          <span id="dataStatus">Loading pole data…</span>
+        </div>
       </div>
     </div>
+
+    <!-- Results Area -->
+    <div class="result-area" id="resultArea"></div>
+
   </main>
 
-  <script src="./js/pole-locate.js"></script>
+  <!-- Load the pole-locate.js (unchanged logic, updated rendering) -->
+  <script src="js/pole-locate.js"></script>
+
 </body>
 </html>
