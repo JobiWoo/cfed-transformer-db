@@ -356,6 +356,7 @@
         <a href="./service.html">In Service</a>
         <a href="./pole.html">Pole Search</a>
         <a href="./serial.html">Serial Search</a>
+        <a href="./reports.html">Reports</a>
       </div>
     </div>
   </header>
@@ -370,7 +371,6 @@
       </div>
     </div>
 
-    <!-- Summary Cards -->
     <div class="summary-grid">
       <div class="summary-card info">
         <div class="label">Total System Load</div>
@@ -399,7 +399,6 @@
       </div>
     </div>
 
-    <!-- Charts -->
     <div class="charts-section">
       <div class="chart-card">
         <h3>📊 Load by Substation (kVA)</h3>
@@ -415,7 +414,6 @@
       </div>
     </div>
 
-    <!-- Controls -->
     <div class="controls-bar">
       <div class="control-group">
         <label>Substation</label>
@@ -435,13 +433,13 @@
       <button class="btn btn-primary" id="btnPrint">🖨 Print</button>
     </div>
 
-    <!-- Table -->
     <div class="table-card">
       <div class="chips">
         <span class="chip">Showing: <strong id="metaFeeders">--</strong> feeders</span>
         <span class="chip">Transformers: <strong id="metaRows">--</strong></span>
         <span class="chip">View: <strong id="metaView">System</strong></span>
       </div>
+
       <div class="table-wrapper">
         <table id="reportTable">
           <thead>
@@ -465,7 +463,7 @@
 
   <script>
     // ============================================================
-    // CONFIGURATION (from your documentation)
+    // CONFIGURATION
     // ============================================================
     const THEISS_FEEDERS = new Set([1203, 1209]);
     const FEEDER_LABEL_OVERRIDES = { 1203: "THEISS 3", 1209: "THEISS 9" };
@@ -475,7 +473,7 @@
     // STATE
     // ============================================================
     const state = {
-      data: { rows: [] },     // dashboard expects rows like: { feeder, xfmr_name, phase1_kva, phase2_kva, phase3_kva, phase1_cust, phase2_cust, phase3_cust, cust_3ph }
+      data: { rows: [] },
       substation: "ALL",
       feeder: "ALL",
       search: "",
@@ -509,13 +507,6 @@
 
     // ============================================================
     // MAPPING: transformers.json -> dashboard rows
-    //
-    // Assumptions (adjust if needed):
-    //  - feeder: row.FEEDER (or row.Feeder) is numeric-ish
-    //  - transformer id/name: row.TRANS_ID or row.SERIAL or row.FACILITY_ID
-    //  - phases: row.PHASE (examples: "A", "B", "C", "AB", "BC", "ABC", "1", "2", "3", "12", "123")
-    //  - kva: row.KVA
-    //  - customer count: row.NO_CUST
     // ============================================================
     function asNumber(v) {
       const s = String(v ?? "").trim();
@@ -524,25 +515,46 @@
       return m ? Number(m[0]) : NaN;
     }
 
+    // ✅ FIXED: This is the core bugfix.
+    // In many utility datasets, PHASE="3" means "3-phase" (ABC), NOT Phase C.
     function parsePhases(raw) {
       const s0 = String(raw ?? "").trim().toUpperCase();
       if (!s0) return []; // unknown
 
-      // Normalize common numeric phase codes
-      // 1/2/3 -> A/B/C ; 12 -> AB ; 23 -> BC ; 13 -> AC ; 123 -> ABC
       const s = s0
         .replace(/PHASE\s*/g, "")
+        .replace(/\s+/g, "")
         .replace(/[^A-Z0-9]/g, "");
 
-      const mapDigit = (ch) => (ch === "1" ? "A" : ch === "2" ? "B" : ch === "3" ? "C" : ch);
-      const normalized = s.split("").map(mapDigit).join("");
+      // Common 3-phase encodings
+      if (s === "3" || s === "3PH" || s === "3PHASE" || s === "THREEPHASE") return ["A","B","C"];
+      if (s === "ABC" || s === "A B C" || s === "A-B-C") return ["A","B","C"];
 
+      // Common 2-phase / pair encodings
+      if (s === "AB" || s === "12") return ["A","B"];
+      if (s === "BC" || s === "23") return ["B","C"];
+      if (s === "AC" || s === "13") return ["A","C"];
+
+      // Explicit numeric list forms
+      if (s === "123") return ["A","B","C"];
+
+      // Common single-phase labels
+      if (s === "A" || s === "PHASEA" || s === "1") return ["A"];
+      if (s === "B" || s === "PHASEB" || s === "2") return ["B"];
+      if (s === "C" || s === "PHASEC") return ["C"];
+
+      // If letters embedded
       const phases = [];
-      if (normalized.includes("A")) phases.push("A");
-      if (normalized.includes("B")) phases.push("B");
-      if (normalized.includes("C")) phases.push("C");
+      if (s.includes("A")) phases.push("A");
+      if (s.includes("B")) phases.push("B");
+      if (s.includes("C")) phases.push("C");
 
-      // If somehow still empty, treat as unknown
+      // As a fallback, if it's exactly one digit 1/2/3
+      // (but we already handled "3" above as 3-phase)
+      if (phases.length === 0 && /^[12]$/.test(s)) {
+        return s === "1" ? ["A"] : ["B"];
+      }
+
       return phases;
     }
 
@@ -577,10 +589,11 @@
 
         const kva = getKva(r);
         const cust = getCustomers(r);
+
         const phases = parsePhases(r.PHASE ?? r.Phase ?? r.PHASES ?? r.phases);
 
         // Allocate across phases present.
-        // If unknown, allocate all to A so it still counts (flag later if you want).
+        // If unknown, allocate all to A as placeholder (still counts).
         const pCount = phases.length || 1;
         const kvaEach = kva / pCount;
         const custEach = cust / pCount;
@@ -592,14 +605,12 @@
           phase1_kva: 0, phase2_kva: 0, phase3_kva: 0,
           phase1_cust: 0, phase2_cust: 0, phase3_cust: 0,
 
-          // optional separate 3-phase customer bucket (kept for compatibility)
           cust_3ph: 0
         };
 
         const is3ph = phases.length === 3;
 
         if (phases.length === 0) {
-          // unknown: push all into A as a placeholder
           row.phase1_kva += kva;
           row.phase1_cust += cust;
         } else {
@@ -610,10 +621,7 @@
           }
         }
 
-        if (is3ph) {
-          // keep “3ph customers” as informational; does not affect per-phase totals
-          row.cust_3ph = cust;
-        }
+        if (is3ph) row.cust_3ph = cust;
 
         out.push(row);
       }
@@ -683,7 +691,6 @@
     function renderCharts() {
       const all = state.data.rows;
 
-      // Substation totals
       const substationData = new Map();
       for (const [key, feeders] of state.substationToFeeders) {
         const rows = all.filter(r => feeders.has(r.feeder));
@@ -724,7 +731,6 @@
         }
       });
 
-      // Phase balance doughnut
       const totalAgg = buildAgg(all);
       const ctx2 = document.getElementById('phaseChart').getContext('2d');
       if (phaseChart) phaseChart.destroy();
@@ -746,9 +752,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'right' }
-          }
+          plugins: { legend: { position: 'right' } }
         }
       });
     }
@@ -784,21 +788,18 @@
       const all = state.data.rows;
       const displayRows = filterRows(all);
 
-      // Group by feeder
       const feederMap = new Map();
       for (const r of displayRows) {
         if (!feederMap.has(r.feeder)) feederMap.set(r.feeder, []);
         feederMap.get(r.feeder).push(r);
       }
 
-      // Aggregate per feeder
       let feederAggs = [];
       for (const [f, rows] of feederMap) {
         const agg = buildAgg(rows);
         feederAggs.push({ feeder: f, ...agg, imbalance: hasImbalance(agg) });
       }
 
-      // Sort
       const col = state.sortCol;
       const dir = state.sortDir === 'asc' ? 1 : -1;
       feederAggs.sort((a, b) => {
@@ -835,7 +836,6 @@
         tbody.appendChild(tr);
       }
 
-      // Footer total (substation view total)
       const allowed = allowedFeedersForSubstation(state.substation);
       const totalRows = allowed ? all.filter(r => allowed.has(r.feeder)) : all;
       const totalAgg = buildAgg(totalRows);
@@ -860,9 +860,7 @@
 
       document.querySelectorAll('th[data-col]').forEach(th => {
         th.classList.remove('sorted', 'sorted-asc', 'sorted-desc');
-        if (th.dataset.col === state.sortCol) {
-          th.classList.add('sorted', `sorted-${state.sortDir}`);
-        }
+        if (th.dataset.col === state.sortCol) th.classList.add('sorted', `sorted-${state.sortDir}`);
       });
     }
 
@@ -893,7 +891,7 @@
     }
 
     // ============================================================
-    // INIT (load + build index)
+    // INIT
     // ============================================================
     async function loadTransformersJson() {
       const res = await fetch('./data/transformers.json', { cache: 'no-store' });
@@ -923,12 +921,8 @@
       const keys = [...state.substationToFeeders.keys()];
       const numeric = keys.filter(k => k !== "THEISS").map(Number).sort((a, b) => a - b).map(String);
 
-      for (const k of numeric) {
-        sel.innerHTML += `<option value="${k}">${substationLabel(k)}</option>`;
-      }
-      if (state.substationToFeeders.has("THEISS")) {
-        sel.innerHTML += `<option value="THEISS">${substationLabel("THEISS")}</option>`;
-      }
+      for (const k of numeric) sel.innerHTML += `<option value="${k}">${substationLabel(k)}</option>`;
+      if (state.substationToFeeders.has("THEISS")) sel.innerHTML += `<option value="THEISS">${substationLabel("THEISS")}</option>`;
     }
 
     function fillFeederSelect() {
@@ -938,13 +932,9 @@
       const allowed = allowedFeedersForSubstation(state.substation);
       const feeders = allowed ? [...allowed].sort((a, b) => a - b) : state.feedersAll;
 
-      for (const f of feeders) {
-        sel.innerHTML += `<option value="${f}">${feederLabel(f)}</option>`;
-      }
+      for (const f of feeders) sel.innerHTML += `<option value="${f}">${feederLabel(f)}</option>`;
 
-      if (state.feeder !== "ALL" && allowed && !allowed.has(Number(state.feeder))) {
-        state.feeder = "ALL";
-      }
+      if (state.feeder !== "ALL" && allowed && !allowed.has(Number(state.feeder))) state.feeder = "ALL";
       sel.value = state.feeder;
     }
 
@@ -986,12 +976,8 @@
       document.querySelectorAll('th[data-col]').forEach(th => {
         th.addEventListener('click', () => {
           const col = th.dataset.col;
-          if (state.sortCol === col) {
-            state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-          } else {
-            state.sortCol = col;
-            state.sortDir = 'asc';
-          }
+          if (state.sortCol === col) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+          else { state.sortCol = col; state.sortDir = 'asc'; }
           renderTable();
         });
       });
@@ -1003,9 +989,8 @@
 
       try {
         const raw = await loadTransformersJson();
-
-        // transformers.json might be an array or {rows:[...]}
         const transformerRows = Array.isArray(raw) ? raw : (raw.rows ?? raw.data ?? []);
+
         state.data.rows = mapTransformersToFeederRows(transformerRows);
 
         buildIndex();
@@ -1016,8 +1001,6 @@
         renderSummary();
         renderCharts();
         renderTable();
-
-        document.getElementById('banner').style.display = "flex";
       } catch (err) {
         console.error(err);
         document.getElementById('banner').innerHTML =
