@@ -2,96 +2,120 @@
 (() => {
   const DATA_URL = "./data/poles.json";
 
-  const els = {
-    status: document.getElementById("dataStatus"),
+  const el = {
     input: document.getElementById("poleInput"),
     btnSearch: document.getElementById("btnSearch"),
     btnClear: document.getElementById("btnClear"),
-    result: document.getElementById("resultArea"),
+    status: document.getElementById("statusText"),
+    match: document.getElementById("matchText"),
+
+    form: document.getElementById("resultForm"),
+    empty: document.getElementById("emptyState"),
+
+    vPoleNo: document.getElementById("vPoleNo"),
+    vPoleId: document.getElementById("vPoleId"),
+    vOwner: document.getElementById("vOwner"),
+    vMaterial: document.getElementById("vMaterial"),
+    vHeight: document.getElementById("vHeight"),
+    vClass: document.getElementById("vClass"),
+    vAddress: document.getElementById("vAddress"),
+    vStreet: document.getElementById("vStreet"),
+    vLocation: document.getElementById("vLocation"),
+    vSect: document.getElementById("vSect"),
+    vBlk: document.getElementById("vBlk"),
+    vSecDist: document.getElementById("vSecDist"),
+    vYearSet: document.getElementById("vYearSet"),
+    vRemarks: document.getElementById("vRemarks"),
+
+    btnCopyPoleNo: document.getElementById("btnCopyPoleNo"),
+    btnCopyPoleId: document.getElementById("btnCopyPoleId"),
   };
 
-  let poleIndex = new Map(); // key: normalized Pole_No, value: record
+  let poleIndex = new Map();
+  let lastRecord = null;
 
-  function normPoleNo(v) {
-    return String(v ?? "")
-      .trim()
-      .replace(/\s+/g, "")
-      .toLowerCase();
+  function norm(v) {
+    return String(v ?? "").trim().replace(/\s+/g, "").toLowerCase();
   }
 
-  function escHtml(s) {
-    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;",
-      "\"": "&quot;", "'": "&#39;"
-    }[c]));
-  }
-
-  function fieldVal(v) {
+  function safe(v) {
     if (v === null || v === undefined) return "";
     const s = String(v);
-    return s === "NaN" ? "" : s;
-  }
-
-  function renderNotFound(query) {
-    els.result.innerHTML = `
-      <div class="kv" style="border-color:#f1c0c0;background:#fff7f7;">
-        <div class="k error">No match found</div>
-        <div class="v">No pole record matched: <b>${escHtml(query)}</b></div>
-      </div>
-    `;
-  }
-
-  function renderRecord(rec) {
-    // You can reorder or hide fields here if you want
-    const fields = [
-      ["Pole_No", rec.Pole_No],
-      ["Pole_ID", rec.Pole_ID],
-      ["Owner", rec.Owner],
-      ["Material", rec.Material],
-      ["Height", rec.Height],
-      ["Class", rec.Class],
-      ["Address", rec.Address],
-      ["Street", rec.Street],
-      ["Location", rec.Location],
-      ["Sect_No", rec.Sect_No],
-      ["Blk_No", rec.Blk_No],
-      ["Sec_Dist", rec.Sec_Dist],
-      ["Year_Set", rec.Year_Set],
-      ["Remarks", rec.Remarks],
-    ];
-
-    const title = fieldVal(rec.Pole_No) ? `Pole ${fieldVal(rec.Pole_No)}` : "Pole Record";
-
-    els.result.innerHTML = `
-      <div class="card" style="margin-top:12px;">
-        <div class="card-hd">
-          <div>
-            <div class="result-title">${escHtml(title)}</div>
-            <div class="result-sub">Matched on <span class="muted">Pole_No</span> (case-insensitive)</div>
-          </div>
-        </div>
-        <div class="card-bd">
-          <div class="kv-grid">
-            ${fields.map(([k, v]) => `
-              <div class="kv">
-                <div class="k">${escHtml(k)}</div>
-                <div class="v">${escHtml(fieldVal(v) || "—")}</div>
-              </div>
-            `).join("")}
-          </div>
-        </div>
-      </div>
-    `;
+    return (s === "NaN") ? "" : s;
   }
 
   function setReady(ready) {
-    els.btnSearch.disabled = !ready;
-    els.btnClear.disabled = !ready;
+    el.btnSearch.disabled = !ready;
+    el.btnClear.disabled = !ready;
   }
 
-  async function loadData() {
-    els.status.textContent = "Loading pole data…";
+  function setActionsEnabled(enabled) {
+    el.btnCopyPoleNo.disabled = !enabled;
+    el.btnCopyPoleId.disabled = !enabled;
+  }
+
+  function showEmpty(msg) {
+    el.form.style.display = "none";
+    el.empty.style.display = "block";
+    el.empty.textContent = msg || "Enter a pole number above to view the pole record.";
+    el.match.textContent = "";
+    lastRecord = null;
+    setActionsEnabled(false);
+  }
+
+  function fill(rec) {
+    lastRecord = rec;
+
+    el.vPoleNo.textContent = safe(rec.Pole_No) || "—";
+    el.vPoleId.textContent = safe(rec.Pole_ID) || "—";
+    el.vOwner.textContent = safe(rec.Owner) || "—";
+    el.vMaterial.textContent = safe(rec.Material) || "—";
+    el.vHeight.textContent = safe(rec.Height) || "—";
+    el.vClass.textContent = safe(rec.Class) || "—";
+    el.vAddress.textContent = safe(rec.Address) || "—";
+    el.vStreet.textContent = safe(rec.Street) || "—";
+    el.vLocation.textContent = safe(rec.Location) || "—";
+    el.vSect.textContent = safe(rec.Sect_No) || "—";
+    el.vBlk.textContent = safe(rec.Blk_No) || "—";
+    el.vSecDist.textContent = safe(rec.Sec_Dist) || "—";
+    el.vYearSet.textContent = safe(rec.Year_Set) || "—";
+    el.vRemarks.textContent = safe(rec.Remarks) || "—";
+
+    el.form.style.display = "block";
+    el.empty.style.display = "none";
+
+    el.match.textContent = `Match found`;
+    setActionsEnabled(true);
+  }
+
+  function search() {
+    const raw = el.input.value || "";
+    const key = norm(raw);
+
+    if (!key) {
+      showEmpty("Enter a pole number (example: O83271).");
+      return;
+    }
+
+    const rec = poleIndex.get(key);
+    if (!rec) {
+      showEmpty(`No match found for: ${raw}`);
+      return;
+    }
+
+    fill(rec);
+  }
+
+  function clearAll() {
+    el.input.value = "";
+    el.input.focus();
+    showEmpty();
+  }
+
+  async function load() {
+    el.status.textContent = "Loading pole data…";
     setReady(false);
+    showEmpty("Loading…");
 
     try {
       const res = await fetch(DATA_URL, { cache: "no-store" });
@@ -100,61 +124,53 @@
 
       poleIndex = new Map();
       for (const r of rows) {
-        const key = normPoleNo(r.Pole_No);
-        if (!key) continue;
-        // If duplicates ever exist, you could store an array here instead.
-        poleIndex.set(key, r);
+        const k = norm(r.Pole_No);
+        if (!k) continue;
+        if (!poleIndex.has(k)) poleIndex.set(k, r);
       }
 
-      els.status.textContent = `Loaded ${poleIndex.size.toLocaleString()} poles`;
+      el.status.textContent = `Loaded ${poleIndex.size.toLocaleString()} poles`;
       setReady(true);
+      showEmpty();
     } catch (err) {
       console.error(err);
-      els.status.innerHTML = `<span class="error">Failed to load poles.json</span>`;
-      els.result.innerHTML = `
-        <div class="kv" style="border-color:#f1c0c0;background:#fff7f7;">
-          <div class="k error">Data load error</div>
-          <div class="v">
-            Could not load <b>${escHtml(DATA_URL)}</b>.<br/>
-            Check that the file exists in your repo and the path is correct.
-          </div>
-        </div>
-      `;
+      el.status.textContent = "Error loading poles.json";
+      showEmpty("Could not load pole data. Check that data/poles.json exists in the repository.");
     }
   }
 
-  function doSearch() {
-    const raw = els.input.value || "";
-    const key = normPoleNo(raw);
-
-    if (!key) {
-      els.result.innerHTML = `
-        <div class="kv" style="border-color:#e4e8f0;background:#fafbfe;">
-          <div class="k">Enter a pole number</div>
-          <div class="v">Example: <b>O83271</b></div>
-        </div>
-      `;
-      return;
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
     }
-
-    const rec = poleIndex.get(key);
-    if (!rec) return renderNotFound(raw);
-    renderRecord(rec);
-  }
-
-  function clearAll() {
-    els.input.value = "";
-    els.result.innerHTML = "";
-    els.input.focus();
   }
 
   // Events
-  els.btnSearch.addEventListener("click", doSearch);
-  els.btnClear.addEventListener("click", clearAll);
-  els.input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") doSearch();
+  el.btnSearch.addEventListener("click", search);
+  el.btnClear.addEventListener("click", clearAll);
+
+  el.input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") search();
+  });
+
+  el.btnCopyPoleNo.addEventListener("click", async () => {
+    if (!lastRecord) return;
+    await copyText(safe(lastRecord.Pole_No));
+  });
+
+  el.btnCopyPoleId.addEventListener("click", async () => {
+    if (!lastRecord) return;
+    await copyText(safe(lastRecord.Pole_ID));
   });
 
   // Boot
-  loadData();
+  load();
 })();
