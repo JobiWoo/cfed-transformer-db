@@ -3,104 +3,61 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Transformer Inventory</title>
+  <title>City of Cuyahoga Falls • Transformer DB (Demo)</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body>
-  <div class="page">
-    <div class="shell">
 
-      <div class="top-title">Transformer Inventory</div>
-
-      <header class="hero">
-        <div class="hero-title">Transformer Inventory Main Menu</div>
-        <div class="hero-sub">Good Morning Joe!</div>
-      </header>
-
-      <main class="content">
-        <section class="panel-left">
-
-          <!-- Row button -->
-          <a class="menu-item" href="./serial.html">
-            <span class="menu-icon">🔎</span>
-            <span class="menu-text">
-              <span class="menu-title">Locate Transformers by Serial<br/>Number</span>
-            </span>
-          </a>
-
-          <a class="menu-item" href="./pole.html">
-            <span class="menu-icon">🔎</span>
-            <span class="menu-text">
-              <span class="menu-title">Locate Transformers by Pole Number</span>
-            </span>
-          </a>
-
-          <div class="menu-item disabled" aria-disabled="true" title="Coming soon">
-            <span class="menu-icon">📍</span>
-            <span class="menu-text">
-              <span class="menu-title">Locate Transformers by Address Range</span>
-            </span>
-            <span class="badge">Coming soon</span>
-          </div>
-
-          <a class="menu-item" href="./inventory.html">
-            <span class="menu-icon">📦</span>
-            <span class="menu-text">
-              <span class="menu-title">Locate Transformers in Stock<br/>(Inventory)</span>
-            </span>
-          </a>
-
-          <a class="menu-item" href="./service.html">
-            <span class="menu-icon">⚡</span>
-            <span class="menu-text">
-              <span class="menu-title">Locate Transformers in Service</span>
-            </span>
-          </a>
-
-          <!-- ✅ FIX: Report Menu is ACTIVE and links to reports.html -->
-          <a class="menu-item" href="./reports.html" id="reportMenuCard">
-            <span class="menu-icon">🖨️</span>
-            <span class="menu-text">
-              <span class="menu-title">Report Menu</span>
-            </span>
-          </a>
-
-          <div class="menu-item disabled" aria-disabled="true" title="Coming soon">
-            <span class="menu-icon">🛠️</span>
-            <span class="menu-text">
-              <span class="menu-title">Utility Menu</span>
-            </span>
-            <span class="badge">Coming soon</span>
-          </div>
-
-        </section>
-
-        <section class="panel-right">
-          <button class="ghost-btn" type="button" disabled title="Coming soon (SQL / ArcGIS automation)">
-            Update Public DB
-          </button>
-          <button class="ghost-btn" type="button" disabled title="Coming soon (SQL / ArcGIS automation)">
-            Update ArcGIS
-          </button>
-        </section>
-      </main>
-
-      <footer class="menu-footer">
-        <a class="menu-footer-link" href="./inventory.html">Open Inventory</a>
-        <span class="menu-footer-sep">|</span>
-        <a class="menu-footer-link" href="./pole.html">Pole Search</a>
-        <span class="menu-footer-sep">|</span>
-        <a class="menu-footer-link" href="./serial.html">Serial Search</a>
-        <span class="menu-footer-sep">|</span>
-        <a class="menu-footer-link" href="./service.html">In Service</a>
-        <span class="menu-footer-sep">|</span>
-        <a class="menu-footer-link" href="./reports.html">Reports</a>
-      </footer>
-
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="site-topbar">
+      <div class="brand">
+        <div class="brand-title">City of Cuyahoga Falls</div>
+        <div class="brand-subtitle">Electric Department • Transformer Database (Read-Only Demo)</div>
+      </div>
     </div>
-  </div>
 
-  <script src="./app.js"></script>
+    <div class="app-header">
+      <div class="app-title-row">
+        <h1 class="app-title">Main Menu</h1>
+        <div class="app-badge">GitHub Pages Demo • Read-Only</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="layout" style="grid-template-columns: 1fr;">
+    <section class="grid-panel" style="max-width: 920px; margin: 0 auto; width: 100%;">
+      <div class="grid-toolbar" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div class="status">
+          Choose a tool below to search and view transformer records.
+        </div>
+      </div>
+
+      <div style="padding: 14px;">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+
+          <a class="link-btn" href="./inventory.html">Transformer Inventory Listing</a>
+          <a class="link-btn" href="./service.html">Transformers In Service Listing</a>
+          <a class="link-btn" href="./pole.html">Search By Pole Number</a>
+          <a class="link-btn" href="./serial.html">Search By Serial Number</a>
+
+          <!-- ✅ NEW: Feeder Analysis v2 test dashboard -->
+          <a class="link-btn" href="./feeder-analysis-v2.html">Feeder Analysis (v2 Test Dashboard)</a>
+
+          <!-- If you have an older feeder analysis page, keep this (optional).
+               If not, you can delete it. -->
+          <!-- <a class="link-btn" href="./feeder-analysis.html">Feeder Analysis (Original)</a> -->
+
+        </div>
+
+        <div class="hint" style="margin-top:14px;">
+          Note: This is a read-only prototype. Future versions will connect to SQL Server with user permissions.
+        </div>
+      </div>
+    </section>
+  </main>
+
 </body>
 </html>
