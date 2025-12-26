@@ -63,6 +63,7 @@ body{
 .top-actions{
   display:flex;
   gap:10px;
+  flex-wrap:wrap;
 }
 
 .link-btn{
@@ -95,7 +96,7 @@ body{
   border-radius:10px;
   box-shadow:0 18px 50px rgba(0,0,0,.18);
   overflow:hidden;
-  position:relative;
+  position:relative; /* needed for watermark positioning */
 }
 
 /* Compact title strip */
@@ -109,7 +110,7 @@ body{
 }
 
 /* =========================================================
-   HERO (MAIN MENU HEADER)
+   HERO (MAIN MENU HEADER) + CFES WATERMARK
    ========================================================= */
 
 .hero{
@@ -119,37 +120,53 @@ body{
   overflow:hidden;
 }
 
-/* CFES watermark inside hero */
+/* CFES logo/plate watermark inside the hero (MORE VISIBLE, RIGHT-ALIGNED) */
 .hero.hero-cfes::before{
   content:"";
   position:absolute;
   inset:0;
+
   background-image:url("./assets/cfes-header.jpg");
   background-repeat:no-repeat;
-  background-position:right 14px center;
-  background-size:520px auto;
-  opacity:0.22;
-  filter:grayscale(1) contrast(1.05);
+
+  /* Push to right so text area stays clean */
+  background-position:right -40px center;
+  background-size:600px auto;
+
+  /* Increase visibility */
+  opacity:0.38;
+
+  /* Make it feel emblem-like (less photo-ish) */
+  filter:grayscale(1) contrast(1.15) brightness(1.05);
+
   pointer-events:none;
 }
 
-/* dark overlay so text stays readable */
+/* Dark overlay: strong on left for text, lighter on right for the emblem */
 .hero.hero-cfes::after{
   content:"";
   position:absolute;
   inset:0;
-  background:linear-gradient(
+
+  background: linear-gradient(
     90deg,
-    rgba(4,30,79,.92) 0%,
-    rgba(4,30,79,.55) 55%,
-    rgba(4,30,79,.35) 100%
+    rgba(4,30,79,.94) 0%,
+    rgba(4,30,79,.75) 45%,
+    rgba(4,30,79,.45) 70%,
+    rgba(4,30,79,.25) 100%
   );
+
   pointer-events:none;
 }
 
-.hero-title{
+/* Make sure text sits above watermark layers */
+.hero-title,
+.hero-sub{
   position:relative;
   z-index:2;
+}
+
+.hero-title{
   color:#fff;
   font-size:34px;
   font-weight:900;
@@ -157,8 +174,6 @@ body{
 }
 
 .hero-sub{
-  position:relative;
-  z-index:2;
   margin-top:6px;
   font-size:16px;
   color:#dbe7ff;
@@ -169,7 +184,7 @@ body{
   .hero.hero-cfes::before{
     background-position:center;
     background-size:420px auto;
-    opacity:.14;
+    opacity:0.22;
   }
 }
 
@@ -238,6 +253,7 @@ body{
 .menu-title{
   font-size:20px;
   font-weight:900;
+  line-height:1.15;
 }
 
 .badge{
@@ -255,7 +271,11 @@ body{
   margin-top:8px;
   font-weight:900;
   font-size:14px;
+  color:var(--text);
+  letter-spacing:.2px;
 }
+
+.panel-spacer{ height:10px; }
 
 /* =========================================================
    RIGHT PANEL BUTTONS
@@ -270,8 +290,6 @@ body{
   color:#9aa0ad;
   cursor:not-allowed;
 }
-
-.panel-spacer{ height:10px; }
 
 /* =========================================================
    FOOTER
@@ -306,10 +324,16 @@ body{
 .crest-watermark{
   position:absolute;
   right:14px;
+
+  /* raised so it doesn't overlap footer text */
   bottom:92px;
+
   width:160px;
   height:160px;
+
+  /* more visible */
   opacity:0.15;
+
   pointer-events:none;
   z-index:1;
 }
