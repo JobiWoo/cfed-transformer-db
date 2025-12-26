@@ -11,11 +11,21 @@
 <div class="page">
   <div class="shell">
 
+    <!-- CFES Header Branding -->
+    <div class="cfes-header">
+      <img src="./assets/cfes-header.jpg" alt="Cuyahoga Falls Electric System" />
+    </div>
+
+    <!-- Family Crest Watermark (Signature) -->
+    <div class="crest-watermark" aria-hidden="true">
+      <img src="./assets/coat-of-arms.png" alt="" />
+    </div>
+
     <div class="top-title">Transformer Inventory</div>
 
     <header class="hero">
       <div class="hero-title">Main Menu</div>
-      <div class="hero-subtitle">
+      <div class="hero-sub">
         Electric Department • Transformer Database (Read-Only Demo)
       </div>
     </header>
@@ -98,15 +108,12 @@
           Update ArcGIS
         </button>
 
-        <!-- Spacer -->
-        <div style="height: 24px;"></div>
+        <div class="panel-spacer"></div>
 
-        <!-- Additional Searches -->
-        <div class="panel-subtitle">
-          Additional searches available
-        </div>
+        <div class="panel-subtitle">Additional searches available</div>
 
-        <a class="menu-item small" href="./pole-locate.html">
+        <!-- Pole Locate (now styled as a card, matches left panel) -->
+        <a class="menu-item" href="./pole-locate.html">
           <span class="menu-icon">📍</span>
           <span class="menu-text">
             <span class="menu-title">Locate Poles by Pole Number</span>
