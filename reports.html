@@ -30,16 +30,33 @@
 
           <div style="height:12px"></div>
 
+          <!-- Existing report -->
           <button class="btn" onclick="location.href='./feeder-analysis.html'">
             <div class="icon">📊</div>
             <div>
               <div style="font-size:16px">Feeder Statistics</div>
-              <div class="small">Connected kVA by phase • Transformers • Customers • System Total</div>
+              <div class="small">
+                Connected kVA by phase • Transformers • Customers • System Total
+              </div>
             </div>
           </button>
 
           <div style="height:10px"></div>
 
+          <!-- ✅ NEW: v2 dashboard -->
+          <button class="btn" onclick="location.href='./feeder-analysis-v2.html'">
+            <div class="icon">📈</div>
+            <div>
+              <div style="font-size:16px">Feeder Analysis (v2 Test Dashboard)</div>
+              <div class="small">
+                Interactive dashboard • Phase balance • Substation filters • Export / Print
+              </div>
+            </div>
+          </button>
+
+          <div style="height:10px"></div>
+
+          <!-- Coming soon -->
           <button class="btn" disabled style="opacity:.55; cursor:not-allowed">
             <div class="icon">🧾</div>
             <div>Transformers by Feeder</div>
@@ -61,6 +78,9 @@
       <a href="./index.html">Home</a>
       <span style="opacity:.35">|</span>
       <a href="./feeder-analysis.html">Feeder Statistics</a>
+      <span style="opacity:.35">|</span>
+      <!-- ✅ NEW footer link -->
+      <a href="./feeder-analysis-v2.html">Feeder Analysis v2</a>
     </div>
   </div>
 </body>
