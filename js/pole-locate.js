@@ -3,6 +3,7 @@
   const DATA_URL = "./data/poles.json";
 
   const els = {
+    statusWrapper: document.getElementById("dataStatusWrapper"),
     status: document.getElementById("dataStatus"),
     input: document.getElementById("poleInput"),
     btnSearch: document.getElementById("btnSearch"),
@@ -21,8 +22,11 @@
 
   function escHtml(s) {
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;",
-      "\"": "&quot;", "'": "&#39;"
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
     }[c]));
   }
 
@@ -34,51 +38,102 @@
 
   function renderNotFound(query) {
     els.result.innerHTML = `
-      <div class="kv" style="border-color:#f1c0c0;background:#fff7f7;">
-        <div class="k error">No match found</div>
-        <div class="v">No pole record matched: <b>${escHtml(query)}</b></div>
+      <div class="error-card">
+        <div class="error-title">
+          <span>⚠️</span> No Match Found
+        </div>
+        <div class="error-message">
+          No pole record matched: <strong>${escHtml(query)}</strong><br/>
+          Please check the pole number and try again.
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPrompt() {
+    els.result.innerHTML = `
+      <div class="prompt-card">
+        <div class="prompt-icon">🔌</div>
+        <div class="prompt-text">Enter a pole number to search</div>
+        <div class="prompt-example">Example: <code>O83271</code></div>
       </div>
     `;
   }
 
   function renderRecord(rec) {
-    // You can reorder or hide fields here if you want
-    const fields = [
-      ["Pole_No", rec.Pole_No],
-      ["Pole_ID", rec.Pole_ID],
-      ["Owner", rec.Owner],
-      ["Material", rec.Material],
-      ["Height", rec.Height],
-      ["Class", rec.Class],
-      ["Address", rec.Address],
-      ["Street", rec.Street],
-      ["Location", rec.Location],
-      ["Sect_No", rec.Sect_No],
-      ["Blk_No", rec.Blk_No],
-      ["Sec_Dist", rec.Sec_Dist],
-      ["Year_Set", rec.Year_Set],
-      ["Remarks", rec.Remarks],
+    // Organize fields into logical groups
+    const identificationFields = [
+      ["Pole_No", rec.Pole_No, true],  // true = highlight
+      ["Pole_ID", rec.Pole_ID, false],
+      ["Owner", rec.Owner, false],
     ];
 
-    const title = fieldVal(rec.Pole_No) ? `Pole ${fieldVal(rec.Pole_No)}` : "Pole Record";
+    const specificationFields = [
+      ["Material", rec.Material, false],
+      ["Height", rec.Height, false],
+      ["Class", rec.Class, false],
+      ["Year_Set", rec.Year_Set, false],
+    ];
 
-    els.result.innerHTML = `
-      <div class="card" style="margin-top:12px;">
-        <div class="card-hd">
-          <div>
-            <div class="result-title">${escHtml(title)}</div>
-            <div class="result-sub">Matched on <span class="muted">Pole_No</span> (case-insensitive)</div>
+    const locationFields = [
+      ["Address", rec.Address, false],
+      ["Street", rec.Street, false],
+      ["Location", rec.Location, false],
+      ["Sect_No", rec.Sect_No, false],
+      ["Blk_No", rec.Blk_No, false],
+      ["Sec_Dist", rec.Sec_Dist, false],
+    ];
+
+    const otherFields = [
+      ["Remarks", rec.Remarks, false],
+    ];
+
+    const renderField = ([label, value, highlight]) => {
+      const val = fieldVal(value);
+      const isEmpty = !val;
+      return `
+        <div class="kv-item${highlight ? ' highlight' : ''}">
+          <div class="kv-label">${escHtml(label)}</div>
+          <div class="kv-value${isEmpty ? ' empty' : ''}">${escHtml(val || '—')}</div>
+        </div>
+      `;
+    };
+
+    const renderSection = (title, icon, fields) => {
+      // Only render section if at least one field has a value
+      const hasValues = fields.some(([, v]) => fieldVal(v));
+      if (!hasValues && title !== "Identification") return '';
+      
+      return `
+        <div class="kv-section">
+          <div class="kv-section-title">
+            <span>${icon}</span> ${title}
+          </div>
+          <div class="kv-grid">
+            ${fields.map(renderField).join('')}
           </div>
         </div>
-        <div class="card-bd">
-          <div class="kv-grid">
-            ${fields.map(([k, v]) => `
-              <div class="kv">
-                <div class="k">${escHtml(k)}</div>
-                <div class="v">${escHtml(fieldVal(v) || "—")}</div>
-              </div>
-            `).join("")}
+      `;
+    };
+
+    const poleNo = fieldVal(rec.Pole_No);
+    const title = poleNo ? `Pole ${poleNo}` : "Pole Record";
+
+    els.result.innerHTML = `
+      <div class="result-card">
+        <div class="result-header">
+          <div class="result-title">
+            <span>📍</span> ${escHtml(title)}
           </div>
+          <div class="result-subtitle">
+            Matched on <code>Pole_No</code> (case-insensitive)
+          </div>
+        </div>
+        <div class="result-body">
+          ${renderSection("Identification", "🏷️", identificationFields)}
+          ${renderSection("Specifications", "📐", specificationFields)}
+          ${renderSection("Location", "📍", locationFields)}
+          ${renderSection("Notes", "📝", otherFields)}
         </div>
       </div>
     `;
@@ -89,8 +144,13 @@
     els.btnClear.disabled = !ready;
   }
 
+  function setStatus(state, message) {
+    els.statusWrapper.className = `data-status ${state}`;
+    els.status.textContent = message;
+  }
+
   async function loadData() {
-    els.status.textContent = "Loading pole data…";
+    setStatus("loading", "Loading pole data…");
     setReady(false);
 
     try {
@@ -102,21 +162,22 @@
       for (const r of rows) {
         const key = normPoleNo(r.Pole_No);
         if (!key) continue;
-        // If duplicates ever exist, you could store an array here instead.
         poleIndex.set(key, r);
       }
 
-      els.status.textContent = `Loaded ${poleIndex.size.toLocaleString()} poles`;
+      setStatus("success", `${poleIndex.size.toLocaleString()} poles loaded`);
       setReady(true);
     } catch (err) {
       console.error(err);
-      els.status.innerHTML = `<span class="error">Failed to load poles.json</span>`;
+      setStatus("error", "Failed to load data");
       els.result.innerHTML = `
-        <div class="kv" style="border-color:#f1c0c0;background:#fff7f7;">
-          <div class="k error">Data load error</div>
-          <div class="v">
-            Could not load <b>${escHtml(DATA_URL)}</b>.<br/>
-            Check that the file exists in your repo and the path is correct.
+        <div class="error-card">
+          <div class="error-title">
+            <span>❌</span> Data Load Error
+          </div>
+          <div class="error-message">
+            Could not load <strong>${escHtml(DATA_URL)}</strong>.<br/>
+            Check that the file exists and the path is correct.
           </div>
         </div>
       `;
@@ -128,12 +189,7 @@
     const key = normPoleNo(raw);
 
     if (!key) {
-      els.result.innerHTML = `
-        <div class="kv" style="border-color:#e4e8f0;background:#fafbfe;">
-          <div class="k">Enter a pole number</div>
-          <div class="v">Example: <b>O83271</b></div>
-        </div>
-      `;
+      renderPrompt();
       return;
     }
 
