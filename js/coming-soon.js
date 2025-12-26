@@ -5,21 +5,50 @@
   const title = document.getElementById("csTitle");
   const closeBtn = document.getElementById("csCloseBtn");
 
-  function openModal(gifUrl, modalTitle) {
+  // One audio element reused for every open
+  const audio = new Audio();
+  audio.loop = true;
+  audio.preload = "auto";
+
+  function openModal(gifUrl, modalTitle, audioUrl) {
     gif.src = gifUrl || "";
     title.textContent = modalTitle || "Coming soon";
     modal.classList.remove("hidden");
+
+    // Start audio (must be triggered by the click gesture)
+    if (audioUrl) {
+      audio.src = audioUrl;
+      audio.currentTime = 0;
+
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {
+          // If a browser blocks autoplay for any reason, we just fail silently.
+          // (Still shows the GIF; user can close normally.)
+        });
+      }
+    }
   }
 
   function closeModal() {
     modal.classList.add("hidden");
     gif.src = "";
+
+    // Stop audio
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.removeAttribute("src");
+      audio.load();
+    } catch {
+      // ignore
+    }
   }
 
   // Open from any coming-soon button
   document.querySelectorAll(".comingsoon-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      openModal(btn.dataset.gif, btn.dataset.title);
+      openModal(btn.dataset.gif, btn.dataset.title, btn.dataset.audio);
     });
   });
 
