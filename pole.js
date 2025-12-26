@@ -63,6 +63,7 @@ const tbody = document.getElementById("grid-body");
 
 const modal = document.getElementById("modal");
 const modalClose = document.getElementById("modal-close");
+const modalBack = document.getElementById("modal-back"); // ✅ new back button
 const modalBody = document.getElementById("modal-body");
 const modalSubtitle = document.getElementById("modal-subtitle");
 
@@ -177,6 +178,35 @@ function runPoleSearch() {
 }
 
 /* =========================
+   Modal helpers (improved)
+   ========================= */
+let prevBodyOverflow = "";
+
+function openModal() {
+  if (!modal) return;
+
+  // Prevent background scroll (iPad win)
+  prevBodyOverflow = document.body.style.overflow || "";
+  document.body.style.overflow = "hidden";
+
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+
+  // Focus close for accessibility / keyboard
+  if (modalClose) modalClose.focus();
+}
+
+function closeModal() {
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+
+  // Restore background scroll
+  document.body.style.overflow = prevBodyOverflow;
+}
+
+/* =========================
    View/Edit modal (read-only)
    ========================= */
 function openModalForRow(row) {
@@ -200,10 +230,7 @@ function openModalForRow(row) {
     </div>
   `;
 
-  modal.classList.remove("hidden");
-}
-function closeModal() {
-  modal.classList.add("hidden");
+  openModal();
 }
 
 /* =========================
@@ -334,26 +361,36 @@ async function init() {
   }
 }
 
-btnPoleSearch.addEventListener("click", runPoleSearch);
-poleInput.addEventListener("keydown", (e) => {
+btnPoleSearch?.addEventListener("click", runPoleSearch);
+poleInput?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") runPoleSearch();
 });
 
-btnViewEdit.addEventListener("click", () => {
+btnViewEdit?.addEventListener("click", () => {
   if (selectedRow) openModalForRow(selectedRow);
 });
 
-btnPreview.addEventListener("click", openPreview);
+btnPreview?.addEventListener("click", openPreview);
 
-btnQuit.addEventListener("click", () => {
+btnQuit?.addEventListener("click", () => {
   window.location.href = "./index.html";
 });
 
-modalClose.addEventListener("click", closeModal);
-modal.addEventListener("click", (e) => {
+// Modal controls
+modalClose?.addEventListener("click", closeModal);
+modalBack?.addEventListener("click", closeModal); // ✅ Back to Results works
+
+modal?.addEventListener("click", (e) => {
   if (e.target === modal) closeModal();
 });
 
-if (btnHelp) btnHelp.addEventListener("click", showHelp);
+// ESC closes modal (desktop convenience)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && modal && !modal.classList.contains("hidden")) {
+    closeModal();
+  }
+});
+
+btnHelp?.addEventListener("click", showHelp);
 
 init();
