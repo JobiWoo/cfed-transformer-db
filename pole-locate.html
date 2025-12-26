@@ -4,94 +4,156 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Locate Poles by Pole Number</title>
-
-  <!-- Use your existing site stylesheet -->
-  <link rel="stylesheet" href="./css/cfed.css" />
-
-  <style>
-    /* Small, safe additions so it looks like your other search pages */
-    .page-wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
-    .card { background: #fff; border: 1px solid #d7dbe1; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
-    .card-hd { padding: 14px 16px; border-bottom: 1px solid #e7eaf0; display:flex; gap:10px; align-items:center; justify-content:space-between; }
-    .card-bd { padding: 16px; }
-
-    .search-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
-    .field { display:flex; flex-direction:column; gap:6px; min-width: 260px; }
-    .field label { font-weight: 600; }
-    .field input {
-      height: 40px; padding: 0 12px; border: 1px solid #cfd6e3; border-radius: 8px;
-      font-size: 16px;
-    }
-    .btn {
-      height: 40px; padding: 0 16px; border-radius: 8px;
-      border: 1px solid #1f4f9a; background: #1f4f9a; color: #fff; font-weight: 700;
-      cursor: pointer;
-    }
-    .btn:disabled { opacity: .6; cursor: not-allowed; }
-
-    .hint { color:#556; font-size: 14px; margin-top: 8px; }
-    .status { font-size: 14px; color:#556; }
-
-    .result-title { font-size: 18px; font-weight: 800; }
-    .result-sub { color:#556; font-size: 14px; margin-top: 2px; }
-
-    .kv-grid {
-      display:grid;
-      grid-template-columns: repeat(4, minmax(180px, 1fr));
-      gap: 10px 14px;
-    }
-    @media (max-width: 900px) { .kv-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
-    @media (max-width: 520px) { .kv-grid { grid-template-columns: 1fr; } }
-
-    .kv { border: 1px solid #e4e8f0; border-radius: 10px; padding: 10px 12px; background: #fafbfe; }
-    .kv .k { font-size: 12px; letter-spacing: .02em; text-transform: uppercase; color:#667; font-weight: 800; }
-    .kv .v { font-size: 16px; font-weight: 700; color:#111; margin-top: 4px; word-break: break-word; }
-
-    .muted { color:#667; }
-    .error { color:#a31616; font-weight: 700; }
-  </style>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body>
-  <!-- Keep your existing header structure -->
+
+  <!-- TOP NAV -->
   <header class="site-header">
     <div class="site-topbar">
       <div class="brand">
         <div class="brand-title">City of Cuyahoga Falls</div>
-        <div class="brand-subtitle">Electric Department • Poles</div>
+        <div class="brand-subtitle">Electric Department • Pole Records</div>
       </div>
+
       <div class="top-actions">
         <a class="link-btn" href="./index.html">Main Menu</a>
         <a class="link-btn" href="./reports.html">Reports</a>
       </div>
     </div>
-  </header>
 
-  <main class="page-wrap">
-    <div class="card">
-      <div class="card-hd">
-        <div>
-          <div class="result-title">Locate Poles by Pole Number</div>
-          <div class="result-sub">Search matches the <span class="muted">Pole_No</span> field (case-insensitive).</div>
-        </div>
-        <div class="status" id="dataStatus">Loading pole data…</div>
+    <div class="app-header">
+      <div class="app-title-row">
+        <h1 class="app-title">Locate Poles by Pole Number</h1>
+        <div class="app-badge">Read-only • JSON demo</div>
       </div>
 
-      <div class="card-bd">
-        <div class="search-row">
-          <div class="field">
-            <label for="poleInput">Enter Pole Number</label>
-            <input id="poleInput" type="text" placeholder="Example: O83271" autocomplete="off" />
-          </div>
-          <button class="btn" id="btnSearch" type="button" disabled>Search</button>
-          <button class="btn" id="btnClear" type="button" disabled style="background:#fff;color:#1f4f9a;">Clear</button>
+      <!-- Search strip -->
+      <div class="filters">
+        <div class="filter-row" style="grid-template-columns: 260px 1fr auto auto;">
+          <div class="filter-label">Pole Number</div>
+          <input id="poleInput" class="search" type="text" placeholder="Example: O83271" autocomplete="off" />
+          <button id="btnSearch" class="btn btn-primary btn-small" type="button" disabled>Search</button>
+          <button id="btnClear" class="btn btn-small" type="button" disabled>Clear</button>
         </div>
-
-        <div class="hint">Tip: spacing doesn’t matter; we normalize by trimming spaces and ignoring uppercase/lowercase.</div>
-
-        <div id="resultArea" style="margin-top:16px;"></div>
+        <div class="hint">Matches <b>Pole_No</b> case-insensitively (O83271 = o83271). Press <b>Enter</b> to search.</div>
       </div>
     </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="layout">
+    <!-- RESULT PANEL -->
+    <section class="grid-panel">
+
+      <div class="grid-toolbar">
+        <div id="statusText" class="status">Loading pole data…</div>
+        <div class="status" id="matchText"></div>
+      </div>
+
+      <!-- Result form (fills in when found) -->
+      <div id="resultForm" class="serial-form" style="display:none;">
+        <div class="serial-form-row">
+
+          <div class="serial-field">
+            <div class="serial-label">Pole Number</div>
+            <div class="serial-value" id="vPoleNo"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">Pole ID</div>
+            <div class="serial-value" id="vPoleId"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">Owner</div>
+            <div class="serial-value" id="vOwner"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">Material</div>
+            <div class="serial-value" id="vMaterial"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">Height</div>
+            <div class="serial-value" id="vHeight"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">Class</div>
+            <div class="serial-value" id="vClass"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">Address</div>
+            <div class="serial-value" id="vAddress"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">Street</div>
+            <div class="serial-value" id="vStreet"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">Location</div>
+            <div class="serial-value" id="vLocation"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">AT&amp;T Section</div>
+            <div class="serial-value" id="vSect"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">Block</div>
+            <div class="serial-value" id="vBlk"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">CFES Secondary Dist</div>
+            <div class="serial-value" id="vSecDist"></div>
+          </div>
+
+          <div class="serial-field">
+            <div class="serial-label">Year Set</div>
+            <div class="serial-value" id="vYearSet"></div>
+          </div>
+
+          <div class="serial-field wide">
+            <div class="serial-label">Remarks</div>
+            <div class="serial-value multiline" id="vRemarks"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Empty state / errors -->
+      <div id="emptyState" class="hint" style="margin-top:10px;">
+        Enter a pole number above to view the pole record.
+      </div>
+
+    </section>
+
+    <!-- ACTIONS -->
+    <aside class="button-bar">
+      <button id="btnCopyPoleNo" class="btn btn-icon" type="button" disabled>
+        <span class="icon">📋</span> Copy Pole Number
+      </button>
+
+      <button id="btnCopyPoleId" class="btn btn-icon" type="button" disabled>
+        <span class="icon">📋</span> Copy Pole ID
+      </button>
+
+      <button class="btn btn-icon" type="button" onclick="location.href='./index.html'">
+        <span class="icon">🏠</span> Back to Main Menu
+      </button>
+
+      <div class="note">
+        Tip: This is a read-only demo from <code>data/poles.json</code>.
+      </div>
+    </aside>
   </main>
 
   <script src="./js/pole-locate.js"></script>
