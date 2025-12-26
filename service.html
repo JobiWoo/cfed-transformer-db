@@ -5,7 +5,66 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Transformers In Service Listing</title>
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- iPad-friendly modal behavior (bottom-sheet style) -->
+  <style>
+    /* Make sure hidden removes modal */
+    #modal.hidden{ display:none !important; }
+
+    /* Overlay/backdrop */
+    #modal{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.46);
+      display:flex;
+      align-items:center;      /* desktop default */
+      justify-content:center;  /* desktop default */
+      padding:18px;
+      z-index:9999;
+    }
+
+    /* Card: cap height so it never becomes “a whole page” */
+    #modal .modal-card{
+      width:min(1020px, 95vw);
+      max-height:82vh;
+      display:flex;
+      flex-direction:column;
+      background:var(--panel, #fff);
+      border-radius:16px;
+      box-shadow: 0 18px 55px rgba(0,0,0,.25);
+      border:1px solid var(--line, #d8e0ea);
+      overflow:hidden;
+    }
+
+    /* Make body scroll inside the card */
+    #modal .modal-body{
+      overflow:auto;
+      padding:14px;
+    }
+
+    /* Footer stays visible */
+    #modal .modal-footer{
+      border-top:1px solid var(--line, #d8e0ea);
+      background:#fbfdff;
+      padding:12px 14px;
+    }
+
+    /* iPad / smaller screens: bottom sheet feel */
+    @media (max-width: 980px){
+      #modal{
+        align-items:flex-end;
+        justify-content:center;
+        padding:0;
+      }
+      #modal .modal-card{
+        width:100vw;
+        max-height:86vh;
+        border-radius:16px 16px 0 0;
+      }
+    }
+  </style>
 </head>
+
 <body>
 
   <header class="site-header">
@@ -128,13 +187,44 @@
       <div id="modal-body" class="modal-body"></div>
 
       <div class="modal-footer">
-        <div class="note">
+        <!-- ✅ NEW: iPad-friendly back button at the bottom -->
+        <button id="modal-back" class="btn btn-primary" type="button">
+          Back to Results
+        </button>
+
+        <div class="note" style="margin-top:10px;">
           Read-only demo. Later, edits will save to SQL Server (with permissions).
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Your existing logic -->
   <script src="service.js"></script>
+
+  <!-- Small “wiring” script (does not replace your service.js; just adds back/backdrop close) -->
+  <script>
+    (function(){
+      const modal = document.getElementById("modal");
+      const closeBtn = document.getElementById("modal-close");
+      const backBtn  = document.getElementById("modal-back");
+
+      if(!modal) return;
+
+      function closeModal(){
+        modal.classList.add("hidden");
+        modal.setAttribute("aria-hidden","true");
+      }
+
+      if(closeBtn) closeBtn.addEventListener("click", closeModal);
+      if(backBtn)  backBtn.addEventListener("click", closeModal);
+
+      // Tap outside the card closes (iPad-friendly)
+      modal.addEventListener("click", (e)=>{
+        if(e.target === modal) closeModal();
+      });
+    })();
+  </script>
+
 </body>
 </html>
