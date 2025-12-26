@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>City of Cuyahoga Falls • Transformer DB (Demo)</title>
   <link rel="stylesheet" href="./styles.css" />
+
+  <style>
+    /* Main menu grid that looks like your existing button tiles */
+    .menu-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap:14px;
+      padding:16px;
+    }
+    .menu-grid a.btn{
+      text-decoration:none;
+      justify-content:flex-start;
+      width:100%;
+    }
+  </style>
 </head>
 
 <body>
@@ -23,38 +38,48 @@
         <h1 class="app-title">Main Menu</h1>
         <div class="app-badge">GitHub Pages Demo • Read-Only</div>
       </div>
+
+      <div class="hint" style="margin-top:10px;">
+        Choose a tool below to search and view transformer records.
+      </div>
     </div>
   </header>
 
   <!-- MAIN -->
   <main class="layout" style="grid-template-columns: 1fr;">
-    <section class="grid-panel" style="max-width: 920px; margin: 0 auto; width: 100%;">
-      <div class="grid-toolbar" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-        <div class="status">
-          Choose a tool below to search and view transformer records.
-        </div>
+    <section class="grid-panel" style="max-width: 980px; margin: 0 auto; width: 100%;">
+      <div class="menu-grid">
+
+        <a class="btn btn-icon" href="./inventory.html">
+          <span class="icon">📦</span>
+          <span>Transformer Inventory Listing</span>
+        </a>
+
+        <a class="btn btn-icon" href="./service.html">
+          <span class="icon">🏙️</span>
+          <span>Transformers In Service Listing</span>
+        </a>
+
+        <a class="btn btn-icon" href="./pole.html">
+          <span class="icon">🪧</span>
+          <span>Search By Pole Number</span>
+        </a>
+
+        <a class="btn btn-icon" href="./serial.html">
+          <span class="icon">🔎</span>
+          <span>Search By Serial Number</span>
+        </a>
+
+        <!-- ✅ NEW -->
+        <a class="btn btn-icon" href="./feeder-analysis-v2.html">
+          <span class="icon">📊</span>
+          <span>Feeder Analysis (v2 Test Dashboard)</span>
+        </a>
+
       </div>
 
-      <div style="padding: 14px;">
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
-
-          <a class="link-btn" href="./inventory.html">Transformer Inventory Listing</a>
-          <a class="link-btn" href="./service.html">Transformers In Service Listing</a>
-          <a class="link-btn" href="./pole.html">Search By Pole Number</a>
-          <a class="link-btn" href="./serial.html">Search By Serial Number</a>
-
-          <!-- ✅ NEW: Feeder Analysis v2 test dashboard -->
-          <a class="link-btn" href="./feeder-analysis-v2.html">Feeder Analysis (v2 Test Dashboard)</a>
-
-          <!-- If you have an older feeder analysis page, keep this (optional).
-               If not, you can delete it. -->
-          <!-- <a class="link-btn" href="./feeder-analysis.html">Feeder Analysis (Original)</a> -->
-
-        </div>
-
-        <div class="hint" style="margin-top:14px;">
-          Note: This is a read-only prototype. Future versions will connect to SQL Server with user permissions.
-        </div>
+      <div class="hint" style="padding:0 16px 16px;">
+        Note: This is a read-only prototype. Future versions will connect to SQL Server with user permissions.
       </div>
     </section>
   </main>
